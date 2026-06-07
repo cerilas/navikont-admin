@@ -1,0 +1,178 @@
+'use server';
+
+import db from '@/lib/db';
+import { revalidatePath } from 'next/cache';
+import { sendMail } from '@/lib/mail';
+import { sendSms } from '@/lib/sms';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+
+export async function getDoctors() {
+  try {
+    const res = await db.query(`
+      SELECT id, full_name, email, phone, status, created_at, last_login_at
+      FROM core_users
+      WHERE user_type = 'doctor'
+      ORDER BY full_name ASC
+    `);
+    return res.rows;
+  } catch (err: any) {
+    console.error('Error fetching doctors:', err);
+    return [];
+  }
+}
+
+export async function createDoctor(prevState: any, formData: FormData) {
+  const full_name = formData.get('full_name')?.toString();
+  const email = formData.get('email')?.toString();
+  const phone = formData.get('phone')?.toString() || null;
+
+  if (!full_name || !email) {
+    return { error: 'Lütfen Ad Soyad ve E-posta alanlarını doldurun.' };
+  }
+
+  try {
+    // Check email
+    const emailCheck = await db.query('SELECT id FROM core_users WHERE email = $1', [email]);
+    if (emailCheck.rows.length > 0) {
+      return { error: 'Bu e-posta adresi sistemde zaten kayıtlı.' };
+    }
+
+    const id = crypto.randomUUID();
+    const tempPassword = crypto.randomBytes(8).toString('hex');
+    const password_hash = await bcrypt.hash(tempPassword, 10);
+    const reset_token = crypto.randomBytes(32).toString('hex');
+    const reset_token_expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await db.query(`
+      INSERT INTO core_users (id, full_name, email, phone, password_hash, user_type, status, reset_token, reset_token_expires)
+      VALUES ($1, $2, $3, $4, $5, 'doctor', 'active', $6, $7)
+    `, [id, full_name, email, phone, password_hash, reset_token, reset_token_expires]);
+
+    // Send Welcome Email
+    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${reset_token}`;
+    
+    await sendMail({
+      to: email,
+      subject: 'Cerilas DiGA Base - Doktor Hesabınız Oluşturuldu',
+      html: `
+        <h2>Merhaba Dr. ${full_name},</h2>
+        <p>Cerilas DiGA Base sisteminde doktor hesabınız başarıyla oluşturulmuştur.</p>
+        <p>Hesabınıza erişmek ve kendi şifrenizi belirlemek için lütfen aşağıdaki bağlantıya tıklayın:</p>
+        <p><a href="${resetLink}" style="padding: 10px 15px; background-color: #0054a6; color: white; text-decoration: none; border-radius: 5px;">Şifremi Belirle</a></p>
+        <p><em>Bu bağlantı 24 saat geçerlidir.</em></p>
+      `
+    });
+
+    revalidatePath('/settings/doctors');
+    return { success: true, message: 'Doktor başarıyla eklendi ve şifre oluşturma e-postası gönderildi.' };
+  } catch (err: any) {
+    console.error('Error creating doctor:', err);
+    return { error: 'Doktor eklenirken bir hata oluştu: ' + err.message };
+  }
+}
+
+export async function updateDoctor(prevState: any, formData: FormData) {
+  const id = formData.get('id')?.toString();
+  const full_name = formData.get('full_name')?.toString();
+  const email = formData.get('email')?.toString();
+  const phone = formData.get('phone')?.toString() || null;
+  const status = formData.get('status')?.toString();
+
+  if (!id || !full_name || !email) {
+    return { error: 'Lütfen Ad Soyad ve E-posta alanlarını doldurun.' };
+  }
+
+  try {
+    const emailCheck = await db.query('SELECT id FROM core_users WHERE email = $1 AND id != $2', [email, id]);
+    if (emailCheck.rows.length > 0) {
+      return { error: 'Bu e-posta adresi başka bir kullanıcı tarafından kullanılıyor.' };
+    }
+
+    await db.query(`
+      UPDATE core_users 
+      SET full_name = $1, email = $2, phone = $3, status = $4, updated_at = NOW()
+      WHERE id = $5 AND user_type = 'doctor'
+    `, [full_name, email, phone, status || 'active', id]);
+
+    revalidatePath('/settings/doctors');
+    return { success: true, message: 'Doktor bilgileri başarıyla güncellendi.' };
+  } catch (err: any) {
+    console.error('Error updating doctor:', err);
+    return { error: 'Doktor güncellenirken bir hata oluştu.' };
+  }
+}
+
+export async function sendPasswordReset(doctorId: string) {
+  try {
+    const userRes = await db.query('SELECT full_name, email FROM core_users WHERE id = $1 AND user_type = $2', [doctorId, 'doctor']);
+    if (userRes.rows.length === 0) {
+      return { error: 'Doktor bulunamadı.' };
+    }
+
+    const { full_name, email } = userRes.rows[0];
+    const reset_token = crypto.randomBytes(32).toString('hex');
+    const reset_token_expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await db.query(`
+      UPDATE core_users
+      SET reset_token = $1, reset_token_expires = $2
+      WHERE id = $3
+    `, [reset_token, reset_token_expires, doctorId]);
+
+    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${reset_token}`;
+    
+    await sendMail({
+      to: email,
+      subject: 'Cerilas DiGA Base - Şifre Sıfırlama',
+      html: `
+        <h2>Merhaba Dr. ${full_name},</h2>
+        <p>Hesabınız için şifre sıfırlama talebinde bulunuldu.</p>
+        <p>Yeni şifrenizi belirlemek için lütfen aşağıdaki bağlantıya tıklayın:</p>
+        <p><a href="${resetLink}" style="padding: 10px 15px; background-color: #0054a6; color: white; text-decoration: none; border-radius: 5px;">Şifremi Sıfırla</a></p>
+        <p><em>Bu bağlantı 24 saat geçerlidir. Eğer bu işlemi siz yapmadıysanız, bu e-postayı dikkate almayınız.</em></p>
+      `
+    });
+
+    return { success: true, message: 'Şifre sıfırlama e-postası başarıyla gönderildi.' };
+  } catch (err: any) {
+    console.error('Error sending reset mail:', err);
+    return { error: 'E-posta gönderilirken bir hata oluştu.' };
+  }
+}
+
+export async function sendPasswordResetSMS(doctorId: string) {
+  try {
+    const userRes = await db.query('SELECT full_name, phone FROM core_users WHERE id = $1 AND user_type = $2', [doctorId, 'doctor']);
+    if (userRes.rows.length === 0) {
+      return { error: 'Doktor bulunamadı.' };
+    }
+
+    const { full_name, phone } = userRes.rows[0];
+    
+    if (!phone) {
+      return { error: 'Bu doktorun kayıtlı bir telefon numarası bulunmuyor. Lütfen önce doktoru düzenleyip telefon ekleyin.' };
+    }
+
+    const reset_token = crypto.randomBytes(16).toString('hex'); // shorter token for SMS
+    const reset_token_expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await db.query(`
+      UPDATE core_users
+      SET reset_token = $1, reset_token_expires = $2
+      WHERE id = $3
+    `, [reset_token, reset_token_expires, doctorId]);
+
+    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${reset_token}`;
+    
+    await sendSms({
+      no: phone,
+      msg: `Sayın Dr. ${full_name}, Cerilas sistem şifrenizi belirlemek için linke tıklayın: ${resetLink}`
+    });
+
+    return { success: true, message: "Şifre sıfırlama SMS'i başarıyla gönderildi." };
+  } catch (err: any) {
+    console.error('Error sending reset SMS:', err);
+    return { error: 'SMS gönderilirken bir hata oluştu.' };
+  }
+}
