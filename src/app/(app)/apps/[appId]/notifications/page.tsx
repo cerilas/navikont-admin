@@ -1,5 +1,6 @@
 import db from '@/lib/db';
 import NotificationsClient from './NotificationsClient';
+import { getNotificationHistory } from '@/app/actions/notifications';
 
 export default async function NotificationsPage({ params }: { params: Promise<{ appId: string }> }) {
   const { appId } = await params;
@@ -30,6 +31,10 @@ export default async function NotificationsPage({ params }: { params: Promise<{ 
     is_active: row.is_active
   }));
 
+  // 3. Fetch Notification History
+  const historyRes = await getNotificationHistory(appId);
+  const initialHistory = historyRes.history || [];
+
   return (
     <>
       <div className="page-header d-print-none">
@@ -40,7 +45,7 @@ export default async function NotificationsPage({ params }: { params: Promise<{ 
                 {app.name}
               </div>
               <h2 className="page-title">
-                Bildirim Şablonları
+                Bildirim Yönetimi
               </h2>
             </div>
           </div>
@@ -52,6 +57,7 @@ export default async function NotificationsPage({ params }: { params: Promise<{ 
           <NotificationsClient 
             appId={appId}
             initialTemplates={initialTemplates}
+            initialHistory={initialHistory}
           />
         </div>
       </div>

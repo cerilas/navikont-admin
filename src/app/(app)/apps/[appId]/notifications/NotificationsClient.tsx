@@ -5,6 +5,7 @@ import {
   saveNotificationTemplate, 
   deleteNotificationTemplate, 
   toggleNotificationTemplateStatus,
+  sendNotificationToAll,
   NotificationTemplateInput 
 } from '@/app/actions/notifications';
 import Swal from 'sweetalert2';
@@ -19,13 +20,26 @@ interface Template {
   is_active: boolean;
 }
 
+interface NotificationHistoryItem {
+  batch_id: string;
+  template_id: string;
+  template_code: string;
+  channel: string;
+  sent_at: string;
+  total_sent: string | number;
+  total_read: string | number;
+}
+
 interface NotificationsClientProps {
   appId: string;
   initialTemplates: Template[];
+  initialHistory?: NotificationHistoryItem[];
 }
 
-export default function NotificationsClient({ appId, initialTemplates }: NotificationsClientProps) {
+export default function NotificationsClient({ appId, initialTemplates, initialHistory = [] }: NotificationsClientProps) {
+  const [activeTab, setActiveTab] = useState<'templates' | 'history'>('templates');
   const [templates, setTemplates] = useState<Template[]>(initialTemplates);
+  const [history, setHistory] = useState<NotificationHistoryItem[]>(initialHistory);
   const [isPending, startTransition] = useTransition();
 
   // Search & Filter State
@@ -108,16 +122,9 @@ export default function NotificationsClient({ appId, initialTemplates }: Notific
         Swal.fire('Hata', res.error, 'error');
       } else {
         Swal.fire('Başarılı', 'Bildirim şablonu başarıyla kaydedildi.', 'success');
-        
-        // Refresh local UI state
-        // In a real application, you would ideally re-fetch or rely on Server Actions refreshing page.tsx.
-        // We will build a updated local state mapping to keep UI instant.
         if (editingTemplate?.id) {
           setTemplates(prev => prev.map(t => t.id === editingTemplate.id ? { ...t, ...inputData } : t));
         } else {
-          // For newly created, we reload or estimate, let's refresh page (which next.js server action revalidatePath handles).
-          // But to be completely sure of immediate reactivity, we reload the window or manually append it.
-          // Since revalidatePath is called in the server action, reloading/updating locally is best.
           window.location.reload();
         }
         handleCloseModal();
@@ -174,6 +181,45 @@ export default function NotificationsClient({ appId, initialTemplates }: Notific
     });
   };
 
+  // Handle Send to All
+  const handleSendToAll = (templateId: string, code: string) => {
+    Swal.fire({
+      title: 'Tüm Kullanıcılara Bildirim Gönder',
+      text: `'${code}' şablonunu kullanan bir bildirim uygulamaya kayıtlı tüm kullanıcılara gönderilecektir. Devam etmek istiyor musunuz?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Evet, Devam Et',
+      cancelButtonText: 'İptal',
+      confirmButtonColor: '#3085d6',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: 'Son Onay!',
+          text: 'Bu işlem geri alınamaz. Binlerce kişiye aynı anda bildirim gidebilir. Son kez onaylıyor musunuz?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Evet, Kesinlikle Gönder',
+          cancelButtonText: 'Vazgeç'
+        }).then((finalResult) => {
+          if (finalResult.isConfirmed) {
+            startTransition(async () => {
+              const res = await sendNotificationToAll(appId, templateId);
+              if (res.error) {
+                Swal.fire('Hata', res.error, 'error');
+              } else {
+                Swal.fire('Başarılı', 'Bildirimler veritabanına başarıyla eklendi.', 'success');
+                // Reload to fetch updated history
+                window.location.reload();
+              }
+            });
+          }
+        });
+      }
+    });
+  };
+
   // Filter templates based on search and channel tab selection
   const filteredTemplates = templates.filter(t => {
     const matchesSearch = t.code.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -205,162 +251,258 @@ export default function NotificationsClient({ appId, initialTemplates }: Notific
 
   return (
     <div className="card shadow-sm">
-      <div className="card-header d-flex justify-content-between align-items-center bg-white py-3">
-        <h3 className="card-title fw-bold">Kayıtlı Bildirim Şablonları</h3>
-        <button className="btn btn-primary" onClick={handleOpenCreateModal}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="icon me-2" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
-          Yeni Şablon Ekle
-        </button>
+      <div className="card-header border-bottom-0 bg-white pt-3 pb-0 px-3">
+        <ul className="nav nav-tabs border-bottom-0" data-bs-toggle="tabs">
+          <li className="nav-item">
+            <button 
+              className={`nav-link fw-bold ${activeTab === 'templates' ? 'active text-primary border-primary border-bottom-2' : ''}`}
+              onClick={() => setActiveTab('templates')}
+              style={activeTab === 'templates' ? { borderBottom: '2px solid' } : {}}
+            >
+              Şablonlar
+            </button>
+          </li>
+          <li className="nav-item">
+            <button 
+              className={`nav-link fw-bold ${activeTab === 'history' ? 'active text-primary border-primary border-bottom-2' : ''}`}
+              onClick={() => setActiveTab('history')}
+              style={activeTab === 'history' ? { borderBottom: '2px solid' } : {}}
+            >
+              Gönderilen Bildirimler
+            </button>
+          </li>
+        </ul>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="card-body border-bottom bg-light py-3">
-        <div className="row g-3">
-          <div className="col-md-8">
-            <div className="btn-group w-100 w-md-auto" role="group">
-              <button 
-                type="button" 
-                className={`btn ${selectedChannelFilter === 'all' ? 'btn-primary' : 'btn-white'}`}
-                onClick={() => setSelectedChannelFilter('all')}
-              >
-                Tümü
-              </button>
-              <button 
-                type="button" 
-                className={`btn ${selectedChannelFilter === 'push' ? 'btn-primary' : 'btn-white'}`}
-                onClick={() => setSelectedChannelFilter('push')}
-              >
-                Push
-              </button>
-              <button 
-                type="button" 
-                className={`btn ${selectedChannelFilter === 'sms' ? 'btn-primary' : 'btn-white'}`}
-                onClick={() => setSelectedChannelFilter('sms')}
-              >
-                SMS
-              </button>
-              <button 
-                type="button" 
-                className={`btn ${selectedChannelFilter === 'email' ? 'btn-primary' : 'btn-white'}`}
-                onClick={() => setSelectedChannelFilter('email')}
-              >
-                E-posta
-              </button>
-              <button 
-                type="button" 
-                className={`btn ${selectedChannelFilter === 'in_app' ? 'btn-primary' : 'btn-white'}`}
-                onClick={() => setSelectedChannelFilter('in_app')}
-              >
-                In-App
-              </button>
-            </div>
+      {activeTab === 'templates' && (
+        <>
+          <div className="card-header d-flex justify-content-between align-items-center bg-white py-3 border-top">
+            <h3 className="card-title fw-bold">Kayıtlı Bildirim Şablonları</h3>
+            <button className="btn btn-primary" onClick={handleOpenCreateModal}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="icon me-2" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+              Yeni Şablon Ekle
+            </button>
           </div>
-          <div className="col-md-4">
-            <div className="input-icon">
-              <span className="input-icon-addon">
-                <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" /><path d="M21 21l-6 -6" /></svg>
-              </span>
-              <input 
-                type="text" 
-                className="form-control" 
-                placeholder="Şablon kodu veya metin ara..." 
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Templates Table */}
-      <div className="table-responsive">
-        <table className="table table-vcenter table-mobile-md card-table table-hover">
-          <thead>
-            <tr>
-              <th>Şablon Kodu</th>
-              <th>Kanal</th>
-              <th>Başlık Şablonu</th>
-              <th>Gövde Şablonu</th>
-              <th>Değişkenler</th>
-              <th>Durum</th>
-              <th className="w-1">İşlemler</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredTemplates.length === 0 ? (
+          {/* Filter and Search Bar */}
+          <div className="card-body border-bottom bg-light py-3">
+            <div className="row g-3">
+              <div className="col-md-8">
+                <div className="btn-group w-100 w-md-auto" role="group">
+                  <button 
+                    type="button" 
+                    className={`btn ${selectedChannelFilter === 'all' ? 'btn-primary' : 'btn-white'}`}
+                    onClick={() => setSelectedChannelFilter('all')}
+                  >
+                    Tümü
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`btn ${selectedChannelFilter === 'push' ? 'btn-primary' : 'btn-white'}`}
+                    onClick={() => setSelectedChannelFilter('push')}
+                  >
+                    Push
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`btn ${selectedChannelFilter === 'sms' ? 'btn-primary' : 'btn-white'}`}
+                    onClick={() => setSelectedChannelFilter('sms')}
+                  >
+                    SMS
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`btn ${selectedChannelFilter === 'email' ? 'btn-primary' : 'btn-white'}`}
+                    onClick={() => setSelectedChannelFilter('email')}
+                  >
+                    E-posta
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`btn ${selectedChannelFilter === 'in_app' ? 'btn-primary' : 'btn-white'}`}
+                    onClick={() => setSelectedChannelFilter('in_app')}
+                  >
+                    In-App
+                  </button>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="input-icon">
+                  <span className="input-icon-addon">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" /><path d="M21 21l-6 -6" /></svg>
+                  </span>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    placeholder="Şablon kodu veya metin ara..." 
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Templates Table */}
+          <div className="table-responsive">
+            <table className="table table-vcenter table-mobile-md card-table table-hover">
+              <thead>
+                <tr>
+                  <th>Şablon Kodu</th>
+                  <th>Kanal</th>
+                  <th>Başlık Şablonu</th>
+                  <th>Gövde Şablonu</th>
+                  <th>Değişkenler</th>
+                  <th>Durum</th>
+                  <th className="w-1 text-end">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTemplates.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-4 text-muted">
+                      Kayıtlı bildirim şablonu bulunamadı.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTemplates.map(template => (
+                    <tr key={template.id}>
+                      <td data-label="Şablon Kodu">
+                        <span className="font-monospace fw-bold text-dark">{template.code}</span>
+                      </td>
+                      <td data-label="Kanal">
+                        <span className={getChannelBadgeClass(template.channel)}>
+                          {getChannelLabel(template.channel)}
+                        </span>
+                      </td>
+                      <td data-label="Başlık Şablonu">
+                        <span className="text-muted small">{template.title_template || '-'}</span>
+                      </td>
+                      <td data-label="Gövde Şablonu">
+                        <div className="text-wrap" style={{ maxWidth: '300px' }}>
+                          {template.body_template}
+                        </div>
+                      </td>
+                      <td data-label="Değişkenler">
+                        <div className="d-flex flex-wrap gap-1">
+                          {template.variables.length === 0 ? (
+                            <span className="text-muted small">Yok</span>
+                          ) : (
+                            template.variables.map(v => (
+                              <span key={v} className="badge bg-secondary-lt font-monospace small">{v}</span>
+                            ))
+                          )}
+                        </div>
+                      </td>
+                      <td data-label="Durum">
+                        <label className="form-check form-switch m-0">
+                          <input 
+                            className="form-check-input cursor-pointer" 
+                            type="checkbox" 
+                            checked={template.is_active}
+                            onChange={() => handleToggleStatus(template.id!, template.is_active, template.code)}
+                            disabled={isPending}
+                          />
+                          <span className={`form-check-label small ${template.is_active ? 'text-success fw-semibold' : 'text-danger'}`}>
+                            {template.is_active ? 'Aktif' : 'Pasif'}
+                          </span>
+                        </label>
+                      </td>
+                      <td className="text-end">
+                        <div className="btn-list flex-nowrap justify-content-end">
+                          <button 
+                            className="btn btn-outline-success btn-sm"
+                            onClick={() => handleSendToAll(template.id!, template.code)}
+                            disabled={isPending || !template.is_active}
+                            title="Tüm kullanıcılara gönder"
+                          >
+                            Gönder
+                          </button>
+                          <button 
+                            className="btn btn-white btn-sm"
+                            onClick={() => handleOpenEditModal(template)}
+                            disabled={isPending}
+                          >
+                            Duzenle
+                          </button>
+                          <button 
+                            className="btn btn-outline-danger btn-sm"
+                            onClick={() => handleDelete(template.id!, template.code)}
+                            disabled={isPending}
+                          >
+                            Sil
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'history' && (
+        <div className="table-responsive border-top">
+          <table className="table table-vcenter table-mobile-md card-table table-hover">
+            <thead>
               <tr>
-                <td colSpan={7} className="text-center py-4 text-muted">
-                  Kayıtlı bildirim şablonu bulunamadı.
-                </td>
+                <th>Gönderim Tarihi</th>
+                <th>Şablon Kodu</th>
+                <th>Kanal</th>
+                <th className="text-end">Toplam Gönderilen</th>
+                <th className="text-end">Toplam Okunan</th>
+                <th className="text-end">Okunma Oranı</th>
               </tr>
-            ) : (
-              filteredTemplates.map(template => (
-                <tr key={template.id}>
-                  <td data-label="Şablon Kodu">
-                    <span className="font-monospace fw-bold text-dark">{template.code}</span>
-                  </td>
-                  <td data-label="Kanal">
-                    <span className={getChannelBadgeClass(template.channel)}>
-                      {getChannelLabel(template.channel)}
-                    </span>
-                  </td>
-                  <td data-label="Başlık Şablonu">
-                    <span className="text-muted small">{template.title_template || '-'}</span>
-                  </td>
-                  <td data-label="Gövde Şablonu">
-                    <div className="text-wrap" style={{ maxWidth: '300px' }}>
-                      {template.body_template}
-                    </div>
-                  </td>
-                  <td data-label="Değişkenler">
-                    <div className="d-flex flex-wrap gap-1">
-                      {template.variables.length === 0 ? (
-                        <span className="text-muted small">Yok</span>
-                      ) : (
-                        template.variables.map(v => (
-                          <span key={v} className="badge bg-secondary-lt font-monospace small">{v}</span>
-                        ))
-                      )}
-                    </div>
-                  </td>
-                  <td data-label="Durum">
-                    <label className="form-check form-switch m-0">
-                      <input 
-                        className="form-check-input cursor-pointer" 
-                        type="checkbox" 
-                        checked={template.is_active}
-                        onChange={() => handleToggleStatus(template.id!, template.is_active, template.code)}
-                        disabled={isPending}
-                      />
-                      <span className={`form-check-label small ${template.is_active ? 'text-success fw-semibold' : 'text-danger'}`}>
-                        {template.is_active ? 'Aktif' : 'Pasif'}
-                      </span>
-                    </label>
-                  </td>
-                  <td>
-                    <div className="btn-list flex-nowrap">
-                      <button 
-                        className="btn btn-white btn-sm"
-                        onClick={() => handleOpenEditModal(template)}
-                        disabled={isPending}
-                      >
-                        Duzenle
-                      </button>
-                      <button 
-                        className="btn btn-outline-danger btn-sm"
-                        onClick={() => handleDelete(template.id!, template.code)}
-                        disabled={isPending}
-                      >
-                        Sil
-                      </button>
-                    </div>
+            </thead>
+            <tbody>
+              {history.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-4 text-muted">
+                    Henüz gönderilmiş toplu bildirim bulunmuyor.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                history.map((item) => {
+                  const sent = Number(item.total_sent) || 0;
+                  const read = Number(item.total_read) || 0;
+                  const rate = sent > 0 ? Math.round((read / sent) * 100) : 0;
+                  return (
+                    <tr key={item.batch_id}>
+                      <td data-label="Gönderim Tarihi">
+                        {new Date(item.sent_at).toLocaleString('tr-TR')}
+                      </td>
+                      <td data-label="Şablon Kodu">
+                        <span className="font-monospace fw-bold">{item.template_code}</span>
+                      </td>
+                      <td data-label="Kanal">
+                        <span className={getChannelBadgeClass(item.channel)}>
+                          {getChannelLabel(item.channel)}
+                        </span>
+                      </td>
+                      <td data-label="Toplam Gönderilen" className="text-end fw-bold text-dark">
+                        {sent.toLocaleString('tr-TR')}
+                      </td>
+                      <td data-label="Toplam Okunan" className="text-end fw-bold text-success">
+                        {read.toLocaleString('tr-TR')}
+                      </td>
+                      <td data-label="Okunma Oranı" className="text-end">
+                        <div className="d-flex align-items-center justify-content-end">
+                          <span className="me-2">{rate}%</span>
+                          <div className="progress" style={{ width: '60px', height: '6px' }}>
+                            <div className="progress-bar bg-success" style={{ width: `${rate}%` }}></div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Modal - React Controlled Overlay */}
       {isModalOpen && (
@@ -385,7 +527,7 @@ export default function NotificationsClient({ appId, initialTemplates }: Notific
                         value={formCode}
                         onChange={e => setFormCode(e.target.value)}
                         required
-                        disabled={!!editingTemplate} // Code should be immutable or verified upon creation
+                        disabled={!!editingTemplate} 
                       />
                       <small className="form-hint text-muted">
                         Kural motorunda şablonu tetiklemek için kullanılacak benzersiz anahtar.
@@ -430,7 +572,7 @@ export default function NotificationsClient({ appId, initialTemplates }: Notific
                         required
                       ></textarea>
                       <small className="form-hint text-muted">
-                        Değişkenleri `{`{{değisken_adı}}`}` formatında kullanabilirsiniz.
+                        Değişkenleri {'{{değisken_adı}}'} formatında kullanabilirsiniz.
                       </small>
                     </div>
 
@@ -470,7 +612,6 @@ export default function NotificationsClient({ appId, initialTemplates }: Notific
               </form>
             </div>
           </div>
-          {/* Modal Backdrop overlay */}
           <div className="modal-backdrop fade show" style={{ zIndex: 1040 }}></div>
         </>
       )}

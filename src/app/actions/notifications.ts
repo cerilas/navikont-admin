@@ -124,3 +124,83 @@ export async function toggleNotificationTemplateStatus(appId: string, templateId
     return { error: 'Şablon durumu güncellenirken bir hata oluştu: ' + error.message };
   }
 }
+
+export async function sendNotificationToAll(appId: string, templateId: string) {
+  try {
+    // 1. Get template details
+    const templateRes = await db.query(
+      'SELECT code, channel, title_template, body_template FROM content_notification_templates WHERE id = $1 AND app_id = $2',
+      [templateId, appId]
+    );
+
+    if (templateRes.rows.length === 0) {
+      return { error: 'Şablon bulunamadı.' };
+    }
+
+    const template = templateRes.rows[0];
+    const batchId = crypto.randomUUID();
+
+    // 2. Insert into patient_notifications from patient_app_enrollments
+    await db.query(`
+      INSERT INTO patient_notifications (
+        id, user_id, enrollment_id, app_id, channel, title, body, status, sent_at, metadata
+      )
+      SELECT 
+        gen_random_uuid(),
+        user_id,
+        id,
+        app_id,
+        $1 as channel,
+        $2 as title,
+        $3 as body,
+        'sent' as status,
+        CURRENT_TIMESTAMP as sent_at,
+        jsonb_build_object('template_id', $4::text, 'batch_id', $5::text, 'template_code', $6::text)
+      FROM patient_app_enrollments
+      WHERE app_id = $7
+    `, [
+      template.channel,
+      template.title_template || null,
+      template.body_template,
+      templateId,
+      batchId,
+      template.code,
+      appId
+    ]);
+
+    revalidatePath(`/apps/${appId}/notifications`);
+    return { success: true, batchId };
+  } catch (error: any) {
+    console.error('Error sending notifications to all:', error);
+    return { error: 'Bildirimler gönderilirken bir hata oluştu: ' + error.message };
+  }
+}
+
+export async function getNotificationHistory(appId: string) {
+  try {
+    const res = await db.query(`
+      SELECT 
+        metadata->>'batch_id' as batch_id,
+        metadata->>'template_id' as template_id,
+        metadata->>'template_code' as template_code,
+        channel,
+        MAX(sent_at) as sent_at,
+        COUNT(*) as total_sent,
+        COUNT(read_at) as total_read
+      FROM patient_notifications
+      WHERE app_id = $1 AND metadata->>'batch_id' IS NOT NULL
+      GROUP BY 
+        metadata->>'batch_id',
+        metadata->>'template_id',
+        metadata->>'template_code',
+        channel
+      ORDER BY MAX(sent_at) DESC
+    `, [appId]);
+
+    return { history: res.rows };
+  } catch (error: any) {
+    console.error('Error fetching notification history:', error);
+    return { error: 'Geçmiş alınırken bir hata oluştu: ' + error.message };
+  }
+}
+
