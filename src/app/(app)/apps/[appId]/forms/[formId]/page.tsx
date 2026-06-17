@@ -102,6 +102,7 @@ export default async function FormEditorPage({ params }: { params: Promise<{ app
             initialName={form.name}
             initialDescription={form.description}
             initialQuestions={initialQuestions}
+            initialStatus={form.status}
           />
         </div>
       </div>

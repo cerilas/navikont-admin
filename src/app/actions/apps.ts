@@ -49,6 +49,7 @@ export async function updateAppBasicInfo(prevState: any, formData: FormData) {
   const disease_id = formData.get('disease_id')?.toString();
   const medical_director_id = formData.get('medical_director_id')?.toString();
   const supported_platforms_str = formData.get('supported_platforms')?.toString();
+  const status = formData.get('status')?.toString();
 
   if (!appId || !name) {
     return { error: 'Lütfen zorunlu alanları (Ad) doldurunuz.' };
@@ -66,8 +67,9 @@ export async function updateAppBasicInfo(prevState: any, formData: FormData) {
         disease_id = $6,
         medical_director_id = $7,
         supported_platforms = $8,
+        status = $9,
         updated_at = NOW()
-      WHERE id = $9
+      WHERE id = $10
     `, [
       name, 
       icon_emoji || null, 
@@ -77,6 +79,7 @@ export async function updateAppBasicInfo(prevState: any, formData: FormData) {
       disease_id || null, 
       medical_director_id || null, 
       supported_platforms_str || null,
+      status || 'draft',
       appId
     ]);
 

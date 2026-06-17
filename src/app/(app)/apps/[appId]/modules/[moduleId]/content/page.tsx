@@ -16,11 +16,11 @@ export default async function ModuleContentPage({ params }: { params: Promise<{ 
 
   if (!moduleData) return null;
 
-  // Fetch latest draft version
+  // Fetch latest version (prefer draft, fallback to published/other)
   const versionRes = await db.query(`
     SELECT * FROM content_module_versions
-    WHERE module_id = $1 AND status = 'draft'
-    ORDER BY created_at DESC LIMIT 1
+    WHERE module_id = $1
+    ORDER BY CASE WHEN status = 'draft' THEN 1 ELSE 2 END, created_at DESC LIMIT 1
   `, [moduleId]);
 
   const latestVersion = versionRes.rows[0] || null;

@@ -36,6 +36,7 @@ export async function updateModule(prevState: any, formData: FormData) {
   const internalName = formData.get('internal_name')?.toString();
   const moduleTypeId = formData.get('module_type_id')?.toString();
   const description = formData.get('description')?.toString();
+  const status = formData.get('status')?.toString() || 'draft';
 
   if (!appId || !moduleId || !name || !moduleTypeId) {
     return { error: 'Lütfen zorunlu alanları (Ad ve Modül Tipi) doldurunuz.' };
@@ -44,9 +45,9 @@ export async function updateModule(prevState: any, formData: FormData) {
   try {
     await db.query(`
       UPDATE content_modules 
-      SET name = $1, internal_name = $2, description = $3, module_type_id = $4, updated_at = now()
-      WHERE id = $5 AND app_id = $6
-    `, [name, internalName || null, description || null, moduleTypeId, moduleId, appId]);
+      SET name = $1, internal_name = $2, description = $3, module_type_id = $4, status = $5, updated_at = now()
+      WHERE id = $6 AND app_id = $7
+    `, [name, internalName || null, description || null, moduleTypeId, status, moduleId, appId]);
   } catch (err: any) {
     console.error('Error updating module:', err);
     return { error: 'Modül güncellenirken sistemsel bir hata meydana geldi.' };

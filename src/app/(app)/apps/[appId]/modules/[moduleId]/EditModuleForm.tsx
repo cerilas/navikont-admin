@@ -56,6 +56,15 @@ export default function EditModuleForm({ appId, moduleData, moduleTypes }: { app
           <textarea className="form-control" name="description" rows={3} defaultValue={moduleData.description || ''}></textarea>
         </div>
 
+        <div className="mb-3">
+          <label className="form-label required">Modül Durumu</label>
+          <select className="form-select" name="status" defaultValue={moduleData.status || 'draft'}>
+            <option value="draft">Taslak (Uygulamada Görünmez)</option>
+            <option value="published">Yayında (Aktif)</option>
+            <option value="archived">Arşivlendi (Gizli)</option>
+          </select>
+        </div>
+
       <div className="mt-4">
         <SubmitButton />
       </div>

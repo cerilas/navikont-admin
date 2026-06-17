@@ -116,6 +116,7 @@ export async function updateJourney(prevState: any, formData: FormData) {
   const name = formData.get('name')?.toString();
   const description = formData.get('description')?.toString();
   const isDefault = formData.get('isDefault') === 'true';
+  const status = formData.get('status')?.toString() || 'draft';
 
   if (!journeyId || !name) return { error: 'Gerekli alanlar eksik' };
 
@@ -129,8 +130,8 @@ export async function updateJourney(prevState: any, formData: FormData) {
     }
 
     await db.query(
-      `UPDATE content_journeys SET name = $1, description = $2, is_default = $3, updated_at = NOW() WHERE id = $4`,
-      [name, description, isDefault, journeyId]
+      `UPDATE content_journeys SET name = $1, description = $2, is_default = $3, status = $4, updated_at = NOW() WHERE id = $5`,
+      [name, description, isDefault, status, journeyId]
     );
     return { success: true, message: 'Akış ayarları güncellendi.' };
   } catch(err) {
@@ -152,5 +153,76 @@ export async function hardDeleteJourney(formData: FormData) {
   } catch (err) {
     console.error(err);
     return { error: 'Silme işlemi başarısız.' };
+  }
+}
+
+export async function reorderJourneyStep(stepId: string, direction: 'up' | 'down') {
+  if (!stepId) return { error: 'Geçersiz ID' };
+
+  try {
+    // 1. Fetch the target step info
+    const stepRes = await db.query('SELECT journey_id, day_number, order_in_day FROM content_journey_steps WHERE id = $1', [stepId]);
+    if (stepRes.rows.length === 0) return { error: 'Adım bulunamadı.' };
+    const { journey_id, day_number, order_in_day } = stepRes.rows[0];
+
+    // 2. Fetch all steps for this day ordered by order_in_day
+    const listRes = await db.query(`
+      SELECT id, order_in_day 
+      FROM content_journey_steps 
+      WHERE journey_id = $1 AND day_number = $2
+      ORDER BY order_in_day ASC
+    `, [journey_id, day_number]);
+    
+    const steps = listRes.rows;
+    const currentIndex = steps.findIndex(s => s.id === stepId);
+    if (currentIndex === -1) return { error: 'Adım bulunamadı.' };
+
+    let targetIndex = -1;
+    if (direction === 'up' && currentIndex > 0) {
+      targetIndex = currentIndex - 1;
+    } else if (direction === 'down' && currentIndex < steps.length - 1) {
+      targetIndex = currentIndex + 1;
+    }
+
+    if (targetIndex !== -1) {
+      const currentStep = steps[currentIndex];
+      const siblingStep = steps[targetIndex];
+
+      // Swap their order_in_day using a temporary negative value to prevent unique constraint violations
+      await db.query('BEGIN');
+      await db.query('UPDATE content_journey_steps SET order_in_day = $1 WHERE id = $2', [-currentStep.order_in_day, currentStep.id]);
+      await db.query('UPDATE content_journey_steps SET order_in_day = $1 WHERE id = $2', [currentStep.order_in_day, siblingStep.id]);
+      await db.query('UPDATE content_journey_steps SET order_in_day = $1 WHERE id = $2', [siblingStep.order_in_day, currentStep.id]);
+      await db.query('COMMIT');
+      
+      return { success: true };
+    }
+
+    return { success: false, message: 'Sınırda işlem.' };
+  } catch (err) {
+    try {
+      await db.query('ROLLBACK');
+    } catch (_) {}
+    console.error('Error reordering step:', err);
+    return { error: 'Adım sıralaması değiştirilemedi.' };
+  }
+}
+
+export async function updateJourneyStepSettings(stepId: string, isRequired: boolean, delayMinutes: number) {
+  if (!stepId || isNaN(delayMinutes)) {
+    return { error: 'Eksik veya geçersiz veri.' };
+  }
+
+  try {
+    await db.query(`
+      UPDATE content_journey_steps
+      SET is_required = $1, delay_minutes = $2, updated_at = now()
+      WHERE id = $3
+    `, [isRequired, delayMinutes, stepId]);
+
+    return { success: true };
+  } catch (err) {
+    console.error('Error updating step settings:', err);
+    return { error: 'Gecikme/Zorunluluk ayarı güncellenemedi.' };
   }
 }

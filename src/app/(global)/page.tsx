@@ -1,13 +1,20 @@
 import db from '@/lib/db';
 import Link from 'next/link';
+import { IconBrandApple, IconBrandAndroid, IconWorld } from '@tabler/icons-react';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AppSelectionPage() {
   const appsRes = await db.query(`
-    SELECT a.*, d.name as disease_name 
+    SELECT 
+      a.*, 
+      d.name as disease_name,
+      u.full_name as medical_director_name,
+      (SELECT COUNT(*) FROM content_modules m WHERE m.app_id = a.id AND m.deleted_at IS NULL) as module_count,
+      (SELECT COUNT(*) FROM content_journeys j WHERE j.app_id = a.id AND j.deleted_at IS NULL) as journey_count
     FROM content_apps a 
     LEFT JOIN medical_diseases d ON a.disease_id = d.id 
+    LEFT JOIN core_users u ON a.medical_director_id = u.id
     ORDER BY a.created_at DESC
   `);
   const apps = appsRes.rows;
@@ -81,6 +88,80 @@ export default async function AppSelectionPage() {
                           <div className="text-muted small mb-2">
                             {app.short_description || `Hastalık: ${app.disease_name || 'Belirtilmemiş'}`}
                           </div>
+
+                          {/* App Metrics & Details */}
+                          <div className="mt-3 border-top pt-3">
+                            <div className="row g-3">
+                              {/* Modules & Journeys */}
+                              <div className="col-6">
+                                <div className="text-muted small" style={{ fontSize: '11px', fontWeight: 600 }}>İçerik Sayıları</div>
+                                <div className="mt-1 d-flex flex-column gap-1">
+                                  <span>
+                                    <span className="badge bg-blue-lt me-1">{app.module_count || 0}</span> 
+                                    <span className="text-muted small">Modül</span>
+                                  </span>
+                                  <span>
+                                    <span className="badge bg-purple-lt me-1">{app.journey_count || 0}</span> 
+                                    <span className="text-muted small">Akış</span>
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              {/* Sorumlu Hekim */}
+                              <div className="col-6">
+                                <div className="text-muted small" style={{ fontSize: '11px', fontWeight: 600 }}>Sorumlu Hekim</div>
+                                <div className="mt-1 fw-medium text-dark text-truncate" style={{ fontSize: '13px' }} title={app.medical_director_name || 'Atanmamış'}>
+                                  {app.medical_director_name || <span className="text-muted small italic">Atanmamış</span>}
+                                </div>
+                              </div>
+
+                              {/* Platformlar */}
+                              {app.supported_platforms && Array.isArray(app.supported_platforms) && app.supported_platforms.length > 0 && (
+                                <div className="col-12 mt-2 pt-2 border-top-0">
+                                  <div className="text-muted small mb-1" style={{ fontSize: '11px', fontWeight: 600 }}>Desteklenen Platformlar</div>
+                                  <div className="d-flex gap-2 align-items-center flex-wrap">
+                                    {app.supported_platforms.map((plat: string) => {
+                                      const label = plat === 'ios' ? 'iOS' : plat === 'android' ? 'Android' : plat === 'huawei' ? 'Huawei' : plat === 'web' ? 'Web' : plat;
+                                      
+                                      let logoSrc = '';
+                                      if (plat === 'ios') {
+                                        logoSrc = '/platform-logolar/2.png';
+                                      } else if (plat === 'android') {
+                                        logoSrc = '/platform-logolar/3.png';
+                                      } else if (plat === 'huawei') {
+                                        logoSrc = '/platform-logolar/1.png';
+                                      }
+
+                                      if (logoSrc) {
+                                        return (
+                                          <img 
+                                            key={plat} 
+                                            src={logoSrc} 
+                                            alt={label} 
+                                            title={label} 
+                                            className="rounded border p-1 bg-white" 
+                                            style={{ width: '28px', height: '28px', objectFit: 'contain' }} 
+                                          />
+                                        );
+                                      }
+
+                                      return (
+                                        <span 
+                                          key={plat} 
+                                          title={label}
+                                          className="rounded border p-1 bg-white d-inline-flex align-items-center justify-content-center text-muted"
+                                          style={{ width: '28px', height: '28px' }}
+                                        >
+                                          <IconWorld size={16} />
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
                           <div className="mt-3">
                             <div className="row g-2 align-items-center">
                               <div className="col-auto">

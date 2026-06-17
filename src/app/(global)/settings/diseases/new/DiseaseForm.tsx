@@ -40,6 +40,26 @@ export default function DiseaseForm() {
           <label className="form-label">ICD Kodu (Opsiyonel)</label>
           <input type="text" className="form-control" name="icd_code" placeholder="Örn: I10" />
         </div>
+
+        <div className="mb-3">
+          <label className="form-label required">Risk Seviyesi</label>
+          <select className="form-select" name="risk_level" defaultValue="low">
+            <option value="low">Düşük</option>
+            <option value="medium">Orta</option>
+            <option value="high">Yüksek</option>
+          </select>
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label required">Yayın Durumu</label>
+          <select className="form-select" name="status" defaultValue="draft">
+            <option value="draft">Taslak</option>
+            <option value="review">İnceleme</option>
+            <option value="active">Aktif</option>
+            <option value="passive">Pasif</option>
+            <option value="archived">Arşivlendi</option>
+          </select>
+        </div>
       </div>
       <div className="card-footer text-end">
         <SubmitButton />

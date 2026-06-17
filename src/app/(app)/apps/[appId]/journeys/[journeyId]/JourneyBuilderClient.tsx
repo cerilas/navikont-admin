@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { addJourneyStep, removeJourneyStep, updateJourneyDuration } from '@/app/actions/journeys';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { addJourneyStep, removeJourneyStep, updateJourneyDuration, reorderJourneyStep, updateJourneyStepSettings } from '@/app/actions/journeys';
 import Swal from 'sweetalert2';
 import SelectInput from '@/components/ui/SelectInput';
 
@@ -9,9 +10,45 @@ export default function JourneyBuilderClient({ journey, initialSteps, modules }:
   const [steps, setSteps] = useState(initialSteps);
   const [isPending, startTransition] = useTransition();
   
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   // Standart DiGA Tedavi Süresi (Varsayılan 90, ama veritabanından gelir)
   const totalDays = journey.duration_days || 90; 
-  const [activeDay, setActiveDay] = useState<number>(1);
+  
+  const dayParam = searchParams.get('day');
+  const initialActiveDay = dayParam ? parseInt(dayParam) : 1;
+  const [activeDay, setActiveDay] = useState<number>(initialActiveDay);
+
+  const handleSelectDay = (dayNum: number) => {
+    setActiveDay(dayNum);
+    const params = new URLSearchParams(window.location.search);
+    params.set('day', dayNum.toString());
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const handleReorderStep = (stepId: string, direction: 'up' | 'down') => {
+    startTransition(async () => {
+      const res = await reorderJourneyStep(stepId, direction);
+      if (res?.error) {
+        Swal.fire('Hata', res.error, 'error');
+      } else {
+        window.location.reload();
+      }
+    });
+  };
+
+  const handleUpdateStepSettings = (stepId: string, isRequired: boolean, delayMinutes: number) => {
+    startTransition(async () => {
+      const res = await updateJourneyStepSettings(stepId, isRequired, delayMinutes);
+      if (res?.error) {
+        Swal.fire('Hata', res.error, 'error');
+      } else {
+        window.location.reload();
+      }
+    });
+  };
 
   const handleChangeDuration = () => {
     Swal.fire({
@@ -115,14 +152,37 @@ export default function JourneyBuilderClient({ journey, initialSteps, modules }:
                   return (
                     <button 
                       key={day} 
-                      onClick={() => setActiveDay(day)}
+                      onClick={() => handleSelectDay(day)}
                       className={btnClass}
                       style={{ width: '45px', height: '45px', padding: '0', position: 'relative' }}
                       title={`${day}. Gün`}
                     >
                       {day}
                       {modCount > 0 && (
-                        <span className="badge bg-green badge-notification badge-pill" style={{ top: '-5px', right: '-5px' }}>{modCount}</span>
+                        <span 
+                          className="badge-notification" 
+                          style={{ 
+                            position: 'absolute',
+                            top: '-6px',
+                            right: '-6px',
+                            backgroundColor: '#2fb344',
+                            color: '#ffffff',
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                            minWidth: '18px',
+                            height: '18px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '2px solid #ffffff',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                            zIndex: 10,
+                            padding: '0 4px'
+                          }}
+                        >
+                          {modCount}
+                        </span>
                       )}
                     </button>
                   );
@@ -157,24 +217,89 @@ export default function JourneyBuilderClient({ journey, initialSteps, modules }:
                 <div className="list-group list-group-flush mb-4">
                   {activeDaySteps.map((step, idx) => (
                     <div key={step.id} className="list-group-item d-flex align-items-center bg-light rounded mb-2 border">
-                      <span className="badge bg-primary me-3 fs-4 px-2 py-2">{idx + 1}</span>
+                      <span 
+                        className="badge bg-primary text-white me-3 fs-4 d-inline-flex align-items-center justify-content-center" 
+                        style={{ 
+                          width: '28px', 
+                          height: '28px', 
+                          minWidth: '28px',
+                          borderRadius: '50%',
+                          color: '#ffffff',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        {idx + 1}
+                      </span>
                       <div className="flex-fill">
                         <div className="fw-bold fs-4">{step.module_name}</div>
-                        <div className="text-muted mt-1 d-flex align-items-center gap-2">
-                          <span className={`badge ${step.is_required ? 'bg-red-lt' : 'bg-green-lt'}`}>
-                            {step.is_required ? 'Zorunlu Modül' : 'Opsiyonel'}
-                          </span>
-                          {step.delay_minutes > 0 && (
-                            <span className="badge bg-orange-lt">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="icon me-1" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 7l0 5l3 3" /></svg>
-                              {step.delay_minutes} dk gecikme
-                            </span>
-                          )}
+                        <div className="d-flex align-items-center gap-3 mt-1 flex-wrap">
+                          <label className="form-check form-switch mb-0" style={{ cursor: 'pointer' }}>
+                            <input 
+                              className="form-check-input" 
+                              type="checkbox" 
+                              defaultChecked={step.is_required}
+                              disabled={isPending}
+                              onChange={(e) => handleUpdateStepSettings(step.id, e.target.checked, step.delay_minutes)}
+                            />
+                            <span className="form-check-label small fw-bold text-muted">Zorunlu</span>
+                          </label>
+
+                          <div className="d-flex align-items-center gap-1">
+                            <span className="text-muted small">Gecikme:</span>
+                            <input 
+                              type="number" 
+                              className="form-control form-control-sm px-1 py-0 text-center" 
+                              style={{ width: '55px', height: '22px', fontSize: '12px' }} 
+                              defaultValue={step.delay_minutes} 
+                              disabled={isPending}
+                              onBlur={(e) => {
+                                const val = parseInt(e.target.value);
+                                if (!isNaN(val) && val >= 0 && val !== step.delay_minutes) {
+                                  handleUpdateStepSettings(step.id, step.is_required, val);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const target = e.target as HTMLInputElement;
+                                  const val = parseInt(target.value);
+                                  if (!isNaN(val) && val >= 0 && val !== step.delay_minutes) {
+                                    handleUpdateStepSettings(step.id, step.is_required, val);
+                                    target.blur();
+                                  }
+                                }
+                              }}
+                              min="0"
+                            />
+                            <span className="text-muted small">dk</span>
+                          </div>
                         </div>
                       </div>
-                      <button onClick={() => handleDeleteStep(step.id)} className="btn btn-icon btn-outline-danger" title="Kaldır" disabled={isPending}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0" /><path d="M10 11l0 6" /><path d="M14 11l0 6" /><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>
-                      </button>
+                      <div className="btn-list flex-nowrap">
+                        <button 
+                          onClick={() => handleReorderStep(step.id, 'up')} 
+                          className="btn btn-icon btn-outline-secondary" 
+                          title="Yukarı Taşı" 
+                          disabled={isPending || idx === 0}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M18 11l-6 -6l-6 6" /></svg>
+                        </button>
+                        <button 
+                          onClick={() => handleReorderStep(step.id, 'down')} 
+                          className="btn btn-icon btn-outline-secondary" 
+                          title="Aşağı Taşı" 
+                          disabled={isPending || idx === activeDaySteps.length - 1}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M6 13l6 6l6 -6" /></svg>
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteStep(step.id)} 
+                          className="btn btn-icon btn-outline-danger" 
+                          title="Kaldır" 
+                          disabled={isPending}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0" /><path d="M10 11l0 6" /><path d="M14 11l0 6" /><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

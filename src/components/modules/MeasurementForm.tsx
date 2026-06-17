@@ -26,7 +26,7 @@ export default function MeasurementForm({ initialData, onChange }: { initialData
         <div className="alert alert-info">Hastadan alınacak her bir veri için (Örn: Sistolik Tansiyon, Kilo) bir ölçüm birimi ekleyin.</div>
         
         {metrics.map((m: any, mIndex: number) => (
-          <div key={m.id} className="row g-2 align-items-end mb-3 p-3 border bg-white rounded">
+          <div key={m.id || mIndex} className="row g-2 align-items-end mb-3 p-3 border bg-white rounded">
             <div className="col-md-4">
               <label className="form-label required small">Ölçüm Adı</label>
               <input 

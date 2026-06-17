@@ -21,7 +21,7 @@ export default function LoginPage() {
       <div className="container container-tight py-4">
         <div className="text-center mb-4">
           <a href="." className="navbar-brand navbar-brand-autodark">
-            <h1>Cerilas - DiGA Base</h1>
+            <img src="/logo.png" alt="Cerilas DiGA Base Logo" style={{ maxHeight: '80px', width: 'auto', objectFit: 'contain' }} />
           </a>
         </div>
         <div className="card card-md">

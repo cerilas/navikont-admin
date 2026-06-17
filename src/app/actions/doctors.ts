@@ -2,7 +2,7 @@
 
 import db from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { sendMail } from '@/lib/mail';
+import { sendMail, getHtmlEmailTemplate } from '@/lib/mail';
 import { sendSms } from '@/lib/sms';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
@@ -52,16 +52,25 @@ export async function createDoctor(prevState: any, formData: FormData) {
     // Send Welcome Email
     const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${reset_token}`;
     
+    // Fetch system app name
+    let appName = 'DiGA Base';
+    const anyAppRes = await db.query('SELECT name FROM content_apps LIMIT 1');
+    if (anyAppRes.rows.length > 0) {
+      appName = anyAppRes.rows[0].name;
+    }
+
     await sendMail({
       to: email,
-      subject: 'Cerilas DiGA Base - Doktor Hesabınız Oluşturuldu',
-      html: `
-        <h2>Merhaba Dr. ${full_name},</h2>
-        <p>Cerilas DiGA Base sisteminde doktor hesabınız başarıyla oluşturulmuştur.</p>
-        <p>Hesabınıza erişmek ve kendi şifrenizi belirlemek için lütfen aşağıdaki bağlantıya tıklayın:</p>
-        <p><a href="${resetLink}" style="padding: 10px 15px; background-color: #0054a6; color: white; text-decoration: none; border-radius: 5px;">Şifremi Belirle</a></p>
-        <p><em>Bu bağlantı 24 saat geçerlidir.</em></p>
-      `
+      subject: `${appName} - Doktor Hesabınız Oluşturuldu`,
+      html: getHtmlEmailTemplate(
+        `Sayın Dr. ${full_name}`,
+        `<p>${appName} sisteminde doktor hesabınız başarıyla oluşturulmuştur.</p>
+         <p>Hesabınıza erişmek ve kendi şifrenizi belirlemek için lütfen aşağıdaki bağlantıya tıklayın:</p>
+         <p style="margin-top: 16px; font-size: 13px; color: #94a3b8;"><em>Bu bağlantı 24 saat boyunca geçerlidir.</em></p>`,
+        'Şifremi Belirle',
+        resetLink,
+        appName
+      )
     });
 
     revalidatePath('/settings/doctors');
@@ -122,16 +131,30 @@ export async function sendPasswordReset(doctorId: string) {
 
     const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${reset_token}`;
     
+    // Fetch doctor's app or first app name
+    let appName = 'DiGA Base';
+    const appRes = await db.query('SELECT name FROM content_apps WHERE medical_director_id = $1 LIMIT 1', [doctorId]);
+    if (appRes.rows.length > 0) {
+      appName = appRes.rows[0].name;
+    } else {
+      const anyAppRes = await db.query('SELECT name FROM content_apps LIMIT 1');
+      if (anyAppRes.rows.length > 0) {
+        appName = anyAppRes.rows[0].name;
+      }
+    }
+
     await sendMail({
       to: email,
-      subject: 'Cerilas DiGA Base - Şifre Sıfırlama',
-      html: `
-        <h2>Merhaba Dr. ${full_name},</h2>
-        <p>Hesabınız için şifre sıfırlama talebinde bulunuldu.</p>
-        <p>Yeni şifrenizi belirlemek için lütfen aşağıdaki bağlantıya tıklayın:</p>
-        <p><a href="${resetLink}" style="padding: 10px 15px; background-color: #0054a6; color: white; text-decoration: none; border-radius: 5px;">Şifremi Sıfırla</a></p>
-        <p><em>Bu bağlantı 24 saat geçerlidir. Eğer bu işlemi siz yapmadıysanız, bu e-postayı dikkate almayınız.</em></p>
-      `
+      subject: `${appName} - Şifre Sıfırlama`,
+      html: getHtmlEmailTemplate(
+        `Sayın Dr. ${full_name}`,
+        `<p>Hesabınız için şifre sıfırlama talebinde bulunuldu.</p>
+         <p>Yeni şifrenizi belirlemek için lütfen aşağıdaki butona tıklayın:</p>
+         <p style="margin-top: 16px; font-size: 13px; color: #94a3b8;"><em>Bu bağlantı 24 saat boyunca geçerlidir. Eğer bu işlemi siz yapmadıysanız, bu e-postayı dikkate almayınız.</em></p>`,
+        'Şifremi Sıfırla',
+        resetLink,
+        appName
+      )
     });
 
     return { success: true, message: 'Şifre sıfırlama e-postası başarıyla gönderildi.' };
@@ -154,7 +177,7 @@ export async function sendPasswordResetSMS(doctorId: string) {
       return { error: 'Bu doktorun kayıtlı bir telefon numarası bulunmuyor. Lütfen önce doktoru düzenleyip telefon ekleyin.' };
     }
 
-    const reset_token = crypto.randomBytes(16).toString('hex'); // shorter token for SMS
+    const reset_token = crypto.randomBytes(8).toString('hex'); // 8 bytes = 16 hex chars (saves space for SMS)
     const reset_token_expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await db.query(`
@@ -164,10 +187,23 @@ export async function sendPasswordResetSMS(doctorId: string) {
     `, [reset_token, reset_token_expires, doctorId]);
 
     const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${reset_token}`;
+    const displayName = full_name.startsWith('Dr.') ? full_name : `Dr. ${full_name}`;
     
+    // Fetch doctor's app or first app name
+    let appName = 'DiGA Base';
+    const appRes = await db.query('SELECT name FROM content_apps WHERE medical_director_id = $1 LIMIT 1', [doctorId]);
+    if (appRes.rows.length > 0) {
+      appName = appRes.rows[0].name;
+    } else {
+      const anyAppRes = await db.query('SELECT name FROM content_apps LIMIT 1');
+      if (anyAppRes.rows.length > 0) {
+        appName = anyAppRes.rows[0].name;
+      }
+    }
+
     await sendSms({
       no: phone,
-      msg: `Sayın Dr. ${full_name}, Cerilas sistem şifrenizi belirlemek için linke tıklayın: ${resetLink}`
+      msg: `Sayın ${displayName}, ${appName} şifre belirleme bağlantısı: ${resetLink}`
     });
 
     return { success: true, message: "Şifre sıfırlama SMS'i başarıyla gönderildi." };

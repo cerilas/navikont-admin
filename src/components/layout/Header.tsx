@@ -14,7 +14,7 @@ export default async function Header({ hideLogo = false }: { hideLogo?: boolean 
         {!hideLogo && (
           <h1 className="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
             <Link href="/">
-              Cerilas - DiGA Base
+              <img src="/logo.png" alt="Cerilas DiGA Base Logo" style={{ maxHeight: '35px', width: 'auto', objectFit: 'contain' }} />
             </Link>
           </h1>
         )}

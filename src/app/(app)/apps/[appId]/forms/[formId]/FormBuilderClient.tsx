@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { saveQuestionnaire, FormQuestion, FormOption } from '@/app/actions/forms';
+import { saveQuestionnaire, deleteQuestionnaire, FormQuestion, FormOption } from '@/app/actions/forms';
 import Swal from 'sweetalert2';
+import { useRouter } from 'next/navigation';
 
 interface FormBuilderClientProps {
   appId: string;
@@ -10,6 +11,7 @@ interface FormBuilderClientProps {
   initialName: string;
   initialDescription: string;
   initialQuestions: any[];
+  initialStatus?: string;
 }
 
 export default function FormBuilderClient({ 
@@ -17,11 +19,14 @@ export default function FormBuilderClient({
   formId, 
   initialName, 
   initialDescription, 
-  initialQuestions 
+  initialQuestions,
+  initialStatus = 'draft'
 }: FormBuilderClientProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription || '');
+  const [status, setStatus] = useState(initialStatus);
   const [questions, setQuestions] = useState<FormQuestion[]>(initialQuestions);
 
   const addQuestion = () => {
@@ -76,7 +81,7 @@ export default function FormBuilderClient({
     }
 
     startTransition(async () => {
-      const res = await saveQuestionnaire(appId, formId, name, description, questions);
+      const res = await saveQuestionnaire(appId, formId, name, description, questions, status);
       if (res?.error) {
         Swal.fire('Hata', res.error, 'error');
       } else {
@@ -88,6 +93,32 @@ export default function FormBuilderClient({
           position: 'top-end',
           showConfirmButton: false,
           timer: 3000
+        });
+      }
+    });
+  };
+
+  const handleDelete = () => {
+    Swal.fire({
+      title: 'Anketi Silmek İstediğinize Emin Misiniz?',
+      text: "Bu anket arşivlenecek ve silinecektir. Bu işlem geri alınamaz!",
+      icon: 'error',
+      showCancelButton: true,
+      confirmButtonColor: '#d63939',
+      cancelButtonColor: '#6c7a91',
+      confirmButtonText: 'Evet, Kalıcı Olarak Sil',
+      cancelButtonText: 'İptal'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        startTransition(async () => {
+          const res = await deleteQuestionnaire(appId, formId);
+          if (res?.error) {
+            Swal.fire('Hata', res.error, 'error');
+          } else {
+            Swal.fire('Silindi!', 'Anket başarıyla silindi.', 'success').then(() => {
+              router.push(`/apps/${appId}/forms`);
+            });
+          }
         });
       }
     });
@@ -122,9 +153,29 @@ export default function FormBuilderClient({
                 placeholder="Hastanın ankete başlamadan önce göreceği bilgilendirme metni."
               ></textarea>
             </div>
+            <div className="mb-3">
+              <label className="form-label required">Anket Durumu</label>
+              <select className="form-select" value={status} onChange={e => setStatus(e.target.value)}>
+                <option value="draft">Taslak (Uygulamada Görünmez)</option>
+                <option value="published">Yayında (Aktif)</option>
+                <option value="archived">Arşivlendi (Gizli)</option>
+              </select>
+            </div>
             
             <button className="btn btn-primary w-100 mt-4" onClick={handleSave} disabled={isPending}>
               {isPending ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+            </button>
+          </div>
+        </div>
+
+        <div className="card shadow-sm border-danger mt-4">
+          <div className="card-header bg-danger-lt text-danger">
+            <h3 className="card-title">Tehlikeli Bölge</h3>
+          </div>
+          <div className="card-body text-center">
+            <p className="text-muted">Bu anketi sildiğinizde, hastalara atanmış olan versiyonları arşivlenecektir.</p>
+            <button type="button" onClick={handleDelete} className="btn btn-outline-danger w-100" disabled={isPending}>
+              Anketi Tamamen Sil
             </button>
           </div>
         </div>

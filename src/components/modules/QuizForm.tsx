@@ -1,10 +1,20 @@
 'use client';
 
 export default function QuizForm({ initialData, onChange }: { initialData: any, onChange: (data: any) => void }) {
-  const questions = initialData.questions || [];
+  const rawQuestions = initialData.questions || [];
+
+  // Normalize questions to ensure consistent property names and unique keys
+  const questions = rawQuestions.map((q: any, index: number) => ({
+    id: q.id || `q_${index}`,
+    text: q.text !== undefined ? q.text : (q.question || ''),
+    type: q.type || 'single_choice',
+    options: q.options || ['', ''],
+    correctOptionIndex: q.correctOptionIndex !== undefined ? q.correctOptionIndex : (q.correctAnswer !== undefined ? q.correctAnswer : 0),
+    explanation: q.explanation || ''
+  }));
 
   const handleAddQuestion = () => {
-    const newQuestions = [...questions, { id: Date.now().toString(), type: 'single_choice', text: '', options: ['', ''], correctOptionIndex: 0 }];
+    const newQuestions = [...questions, { id: Date.now().toString(), type: 'single_choice', text: '', options: ['', ''], correctOptionIndex: 0, explanation: '' }];
     onChange({ ...initialData, questions: newQuestions });
   };
 
@@ -21,13 +31,14 @@ export default function QuizForm({ initialData, onChange }: { initialData: any, 
 
   const handleOptionChange = (qIndex: number, optIndex: number, value: string) => {
     const newQuestions = [...questions];
+    newQuestions[qIndex].options = [...newQuestions[qIndex].options];
     newQuestions[qIndex].options[optIndex] = value;
     onChange({ ...initialData, questions: newQuestions });
   };
 
   const handleAddOption = (qIndex: number) => {
     const newQuestions = [...questions];
-    newQuestions[qIndex].options.push('');
+    newQuestions[qIndex].options = [...newQuestions[qIndex].options, ''];
     onChange({ ...initialData, questions: newQuestions });
   };
 

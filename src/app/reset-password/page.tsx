@@ -38,7 +38,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
       <div className="container container-tight py-4">
         <div className="text-center mb-4">
           <Link href="/" className="navbar-brand navbar-brand-autodark">
-            <h1>Cerilas - DiGA Base</h1>
+            <img src="/logo.png" alt="Cerilas DiGA Base Logo" style={{ maxHeight: '80px', width: 'auto', objectFit: 'contain' }} />
           </Link>
         </div>
         

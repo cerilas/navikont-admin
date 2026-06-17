@@ -90,6 +90,15 @@ export default function JourneySettingsClient({ journey, appId }: { journey: any
                 </span>
               </label>
             </div>
+
+            <div className="mb-3">
+              <label className="form-label required">Akış Durumu</label>
+              <select className="form-select" name="status" defaultValue={journey.status || 'draft'}>
+                <option value="draft">Taslak (Uygulamada Görünmez)</option>
+                <option value="active">Yayında (Aktif)</option>
+                <option value="archived">Arşivlendi (Gizli)</option>
+              </select>
+            </div>
           </div>
           <div className="card-footer text-end">
             <SubmitButton />

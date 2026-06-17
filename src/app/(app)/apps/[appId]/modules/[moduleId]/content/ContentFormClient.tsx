@@ -12,6 +12,15 @@ import PdfForm from '@/components/modules/PdfForm';
 import QuizForm from '@/components/modules/QuizForm';
 import MeasurementForm from '@/components/modules/MeasurementForm';
 import GenericForm from '@/components/modules/GenericForm';
+import BreathingForm from '@/components/modules/BreathingForm';
+import TimerForm from '@/components/modules/TimerForm';
+import CheckinForm from '@/components/modules/CheckinForm';
+import DiaryForm from '@/components/modules/DiaryForm';
+import GoalForm from '@/components/modules/GoalForm';
+import ReminderForm from '@/components/modules/ReminderForm';
+import ConsentForm from '@/components/modules/ConsentForm';
+import RiskAlertForm from '@/components/modules/RiskAlertForm';
+import TaskForm from '@/components/modules/TaskForm';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -53,15 +62,24 @@ export default function ContentFormClient({ appId, moduleId, moduleType, existin
     });
   };
 
-  const type = moduleType?.toLowerCase() || '';
+  const type = moduleType?.toLocaleLowerCase('tr-TR') || '';
 
   // Routing Logic
   let ActiveForm;
   if (type.includes('video')) ActiveForm = VideoForm;
-  else if (type.includes('yazılı içerik') || type.includes('makale')) ActiveForm = TextForm;
-  else if (type.includes('dosya') || type.includes('pdf')) ActiveForm = PdfForm;
-  else if (type.includes('quiz') || type.includes('test') || type.includes('soru-cevap')) ActiveForm = QuizForm;
-  else if (type.includes('ölçüm')) ActiveForm = MeasurementForm;
+  else if (type.includes('yazılı içerik') || type.includes('makale') || type.includes('html_content')) ActiveForm = TextForm;
+  else if (type.includes('dosya') || type.includes('pdf') || type.includes('file_pdf')) ActiveForm = PdfForm;
+  else if (type.includes('quiz') || type.includes('test') || type.includes('soru-cevap') || type.includes('question_answer')) ActiveForm = QuizForm;
+  else if (type.includes('ölçüm') || type.includes('measurement_input')) ActiveForm = MeasurementForm;
+  else if (type.includes('nefes') || type.includes('breathing')) ActiveForm = BreathingForm;
+  else if (type.includes('sayaç') || type.includes('timer')) ActiveForm = TimerForm;
+  else if (type.includes('checkin') || type.includes('check-in')) ActiveForm = CheckinForm;
+  else if (type.includes('günlük') || type.includes('diary')) ActiveForm = DiaryForm;
+  else if (type.includes('hedef') || type.includes('goal')) ActiveForm = GoalForm;
+  else if (type.includes('hatırlatıcı') || type.includes('reminder')) ActiveForm = ReminderForm;
+  else if (type.includes('onam') || type.includes('consent')) ActiveForm = ConsentForm;
+  else if (type.includes('risk') || type.includes('risk_alert')) ActiveForm = RiskAlertForm;
+  else if (type.includes('görev') || type.includes('task')) ActiveForm = TaskForm;
   else ActiveForm = GenericForm;
 
   return (

@@ -3,7 +3,7 @@
 import db from '@/lib/db';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { sendMail } from '@/lib/mail';
+import { sendMail, getHtmlEmailTemplate } from '@/lib/mail';
 import { sendSms } from '@/lib/sms';
 import { encrypt } from '@/lib/auth';
 import { cookies } from 'next/headers';
@@ -17,12 +17,27 @@ export async function sendPasswordResetEmail(userId: string, appId?: string) {
     }
     const user = userRes.rows[0];
 
-    // Fetch app name if appId is provided
-    let appName = 'DiGA Platformu';
+    // Fetch app name
+    let appName = 'DiGA Base';
     if (appId) {
       const appRes = await db.query('SELECT name FROM content_apps WHERE id = $1', [appId]);
       if (appRes.rows.length > 0) {
         appName = appRes.rows[0].name;
+      }
+    } else {
+      // Look up patient enrollment
+      const enrollRes = await db.query('SELECT app_id FROM patient_app_enrollments WHERE patient_user_id = $1 LIMIT 1', [userId]);
+      if (enrollRes.rows.length > 0) {
+        const appRes = await db.query('SELECT name FROM content_apps WHERE id = $1', [enrollRes.rows[0].app_id]);
+        if (appRes.rows.length > 0) {
+          appName = appRes.rows[0].name;
+        }
+      } else {
+        // Fallback to first app
+        const anyAppRes = await db.query('SELECT name FROM content_apps LIMIT 1');
+        if (anyAppRes.rows.length > 0) {
+          appName = anyAppRes.rows[0].name;
+        }
       }
     }
 
@@ -44,20 +59,13 @@ export async function sendPasswordResetEmail(userId: string, appId?: string) {
     const baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
     const resetLink = `${baseUrl}/reset-password?token=${token}`;
 
-    const htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2>Merhaba ${user.full_name},</h2>
-        <p><strong>${appName}</strong> uygulaması için hesabınızın şifresini belirlemek veya sıfırlamak için aşağıdaki butona tıklayın.</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetLink}" style="background-color: #206bc4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
-            Şifremi Belirle
-          </a>
-        </div>
-        <p>Eğer butona tıklayamıyorsanız, aşağıdaki linki kopyalayıp tarayıcınıza yapıştırabilirsiniz:</p>
-        <p style="color: #666; word-break: break-all;">${resetLink}</p>
-        <p style="margin-top: 40px; font-size: 12px; color: #999;">Bu bağlantı 24 saat boyunca geçerlidir. Bu işlemi siz talep etmediyseniz bu e-postayı dikkate almayınız.</p>
-      </div>
-    `;
+    const htmlContent = getHtmlEmailTemplate(
+      `Merhaba ${user.full_name}`,
+      `<p><strong>${appName}</strong> uygulaması için hesabınızın şifresini belirlemek veya sıfırlamak için aşağıdaki butona tıklayın.</p>
+       <p style="margin-top: 16px; font-size: 13px; color: #94a3b8;"><em>Bu bağlantı 24 saat boyunca geçerlidir. Bu işlemi siz talep etmediyseniz bu e-postayı dikkate almayınız.</em></p>`,
+      'Şifremi Belirle',
+      resetLink
+    );
 
     // Send the email
     await sendMail({
@@ -85,17 +93,32 @@ export async function sendPasswordResetSMS(userId: string, appId?: string) {
       return { error: 'Hastanın kayıtlı bir telefon numarası bulunmamaktadır. Lütfen önce hastayı düzenleyerek telefon numarasını girin.' };
     }
 
-    // Fetch app name if appId is provided
-    let appName = 'DiGA Platformu';
+    // Fetch app name
+    let appName = 'DiGA Base';
     if (appId) {
       const appRes = await db.query('SELECT name FROM content_apps WHERE id = $1', [appId]);
       if (appRes.rows.length > 0) {
         appName = appRes.rows[0].name;
       }
+    } else {
+      // Look up patient enrollment
+      const enrollRes = await db.query('SELECT app_id FROM patient_app_enrollments WHERE patient_user_id = $1 LIMIT 1', [userId]);
+      if (enrollRes.rows.length > 0) {
+        const appRes = await db.query('SELECT name FROM content_apps WHERE id = $1', [enrollRes.rows[0].app_id]);
+        if (appRes.rows.length > 0) {
+          appName = appRes.rows[0].name;
+        }
+      } else {
+        // Fallback to first app
+        const anyAppRes = await db.query('SELECT name FROM content_apps LIMIT 1');
+        if (anyAppRes.rows.length > 0) {
+          appName = anyAppRes.rows[0].name;
+        }
+      }
     }
 
-    // Generate a shorter token (16 bytes = 32 hex chars) to save SMS space
-    const token = crypto.randomBytes(16).toString('hex');
+    // Generate a shorter token (8 bytes = 16 hex chars) to save SMS space
+    const token = crypto.randomBytes(8).toString('hex');
     
     // Set expiration to 24 hours from now
     const expires = new Date();

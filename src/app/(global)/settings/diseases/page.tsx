@@ -69,13 +69,13 @@ export default async function DiseasesPage() {
                           {d.icd_code || '-'}
                         </td>
                         <td className="text-muted">
-                          {d.risk_level === 'high' ? <span className="badge bg-red">Yüksek</span> : d.risk_level === 'medium' ? <span className="badge bg-orange">Orta</span> : <span className="badge bg-green">Düşük</span>}
+                          {d.risk_level === 'high' ? <span className="badge bg-red-lt">Yüksek</span> : d.risk_level === 'medium' ? <span className="badge bg-orange-lt">Orta</span> : <span className="badge bg-green-lt">Düşük</span>}
                         </td>
                         <td className="text-muted">
                           {d.status === 'active' ? <span className="status status-green">Aktif</span> : <span className="status">{d.status}</span>}
                         </td>
                         <td>
-                          <Link href={`#`} className="btn btn-sm">Düzenle</Link>
+                          <Link href={`/settings/diseases/${d.id}`} className="btn btn-sm">Düzenle</Link>
                         </td>
                       </tr>
                     ))

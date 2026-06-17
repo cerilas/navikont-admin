@@ -37,7 +37,7 @@ export default async function AppSettingsPage({ params }: { params: Promise<{ ap
       <div className="page-body">
         <div className="container-xl">
           <div className="row row-cards">
-            <div className="col-12 col-md-8 col-lg-6">
+            <div className="col-12">
               <AppSettingsForm app={app} diseases={diseases} doctors={doctors} />
             </div>
           </div>
