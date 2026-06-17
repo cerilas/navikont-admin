@@ -251,27 +251,29 @@ export default function NotificationsClient({ appId, initialTemplates, initialHi
 
   return (
     <div className="card shadow-sm">
-      <div className="card-header border-bottom-0 bg-white pt-3 pb-0 px-3">
-        <ul className="nav nav-tabs border-bottom-0" data-bs-toggle="tabs">
-          <li className="nav-item">
-            <button 
-              className={`nav-link fw-bold ${activeTab === 'templates' ? 'active text-primary border-primary border-bottom-2' : ''}`}
-              onClick={() => setActiveTab('templates')}
-              style={activeTab === 'templates' ? { borderBottom: '2px solid' } : {}}
-            >
-              Şablonlar
-            </button>
-          </li>
-          <li className="nav-item">
-            <button 
-              className={`nav-link fw-bold ${activeTab === 'history' ? 'active text-primary border-primary border-bottom-2' : ''}`}
-              onClick={() => setActiveTab('history')}
-              style={activeTab === 'history' ? { borderBottom: '2px solid' } : {}}
-            >
-              Gönderilen Bildirimler
-            </button>
-          </li>
-        </ul>
+      <div className="card-header bg-transparent border-bottom-0 pt-4 pb-2 px-4 d-flex justify-content-center justify-content-md-start">
+        <div className="bg-light p-1 rounded-3 d-inline-flex border">
+          <ul className="nav nav-pills" data-bs-toggle="tabs">
+            <li className="nav-item m-0">
+              <button 
+                className={`nav-link rounded-2 fw-semibold px-4 py-2 d-flex align-items-center transition-all ${activeTab === 'templates' ? 'active shadow-sm bg-white text-primary border' : 'text-muted border border-transparent'}`}
+                onClick={() => setActiveTab('templates')}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="icon me-2" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4m0 1a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1z" /><path d="M4 12m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /><path d="M14 12l6 0" /><path d="M14 16l6 0" /><path d="M14 20l6 0" /></svg>
+                Şablonlar
+              </button>
+            </li>
+            <li className="nav-item m-0 ms-1">
+              <button 
+                className={`nav-link rounded-2 fw-semibold px-4 py-2 d-flex align-items-center transition-all ${activeTab === 'history' ? 'active shadow-sm bg-white text-primary border' : 'text-muted border border-transparent'}`}
+                onClick={() => setActiveTab('history')}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="icon me-2" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 8l0 4l2 2" /><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5" /></svg>
+                Gönderilen Bildirimler
+              </button>
+            </li>
+          </ul>
+        </div>
       </div>
 
       {activeTab === 'templates' && (

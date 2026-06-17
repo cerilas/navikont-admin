@@ -147,7 +147,7 @@ export async function sendNotificationToAll(appId: string, templateId: string) {
       )
       SELECT 
         gen_random_uuid(),
-        user_id,
+        patient_user_id,
         id,
         app_id,
         $1 as channel,
@@ -157,7 +157,7 @@ export async function sendNotificationToAll(appId: string, templateId: string) {
         CURRENT_TIMESTAMP as sent_at,
         jsonb_build_object('template_id', $4::text, 'batch_id', $5::text, 'template_code', $6::text)
       FROM patient_app_enrollments
-      WHERE app_id = $7
+      WHERE app_id = $7 AND status = 'active'
     `, [
       template.channel,
       template.title_template || null,
