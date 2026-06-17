@@ -17,6 +17,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
       u.full_name,
       u.email,
       u.phone,
+      u.profile_image,
       u.id as user_id,
       j.name as journey_name,
       p.birth_date,
@@ -47,6 +48,22 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
     );
   }
 
+  const progressRes = await db.query(`
+    SELECT pmp.id, pmp.module_version_id, pmp.status, pmp.started_at, pmp.completed_at, pmp.progress_percent, pmp.result_data, pmp.day_number,
+           cmv.title AS module_title,
+           cm.name AS module_name,
+           cmt.code AS module_type
+    FROM patient_module_progress pmp
+    JOIN content_module_versions cmv ON cmv.id = pmp.module_version_id
+    JOIN content_modules cm ON cm.id = cmv.module_id
+    JOIN content_module_types cmt ON cmt.id = cm.module_type_id
+    WHERE pmp.enrollment_id = $1
+      AND pmp.patient_user_id = $2
+      AND pmp.app_id = $3
+    ORDER BY pmp.completed_at DESC NULLS LAST
+  `, [enrollmentId, patient.user_id, appId]);
+  const progressLogs = progressRes.rows;
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'invited': return <span className="badge bg-secondary-lt rounded-pill px-3 py-1 fs-5 fw-medium">Davet Edildi</span>;
@@ -58,13 +75,23 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
     }
   };
 
+  const getProfileImageUrl = (img: string | null) => {
+    if (!img) return null;
+    if (img.startsWith('http')) return img;
+    if (img.startsWith('data:')) return img;
+    if (img.startsWith('/uploads/')) return `${process.env.APP_BASE_URL || 'http://localhost:3000'}${img}`;
+    if (img.startsWith('/9j/')) return `data:image/jpeg;base64,${img}`;
+    if (img.startsWith('iVBORw0KGgo')) return `data:image/png;base64,${img}`;
+    return `data:image/jpeg;base64,${img}`;
+  };
+
   return (
     <>
       <div className="page-header d-print-none mt-4 mb-4">
         <div className="container-xl">
           <div className="row g-3 align-items-center">
             <div className="col-auto">
-              <span className="avatar avatar-lg rounded-circle shadow-sm border" style={{backgroundImage: `url(https://ui-avatars.com/api/?name=${encodeURIComponent(patient.full_name)}&background=f1f5f9&color=475569&size=128)`}}></span>
+              <span className="avatar avatar-lg rounded-circle shadow-sm border" style={{backgroundImage: `url(${getProfileImageUrl(patient.profile_image) || `https://ui-avatars.com/api/?name=${encodeURIComponent(patient.full_name)}&background=f1f5f9&color=475569&size=128`})`}}></span>
             </div>
             <div className="col">
               <div className="page-pretitle text-uppercase text-muted fw-bold mb-1" style={{ letterSpacing: '1px' }}>
@@ -123,7 +150,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
 
             {/* Right Main Content */}
             <div className="col-lg-9">
-              <PatientDetailClient patient={patient} journeys={journeys} />
+              <PatientDetailClient patient={patient} journeys={journeys} progressLogs={progressLogs} />
             </div>
 
           </div>

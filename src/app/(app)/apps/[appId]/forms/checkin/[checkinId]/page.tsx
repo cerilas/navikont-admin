@@ -15,6 +15,25 @@ export default async function CheckinDetailPage({ params }: { params: Promise<{ 
   if (res.rows.length === 0) return <div className="alert alert-danger m-3">Check-in bulunamadı</div>;
   const checkin = res.rows[0];
 
+  // 2. Fetch latest version to get fields
+  const vRes = await db.query(`
+    SELECT id FROM forms_checkin_template_versions
+    WHERE checkin_template_id = $1
+    ORDER BY version_number DESC LIMIT 1
+  `, [checkin.id]);
+
+  let fields = [];
+  if (vRes.rows.length > 0) {
+    const versionId = vRes.rows[0].id;
+    const fRes = await db.query(`
+      SELECT id, field_key, field_type, label, unit, is_required
+      FROM forms_checkin_fields
+      WHERE checkin_template_version_id = $1
+      ORDER BY sort_order ASC
+    `, [versionId]);
+    fields = fRes.rows;
+  }
+
   return (
     <>
       <div className="page-header d-print-none">
@@ -43,7 +62,7 @@ export default async function CheckinDetailPage({ params }: { params: Promise<{ 
 
       <div className="page-body">
         <div className="container-xl">
-          <CheckinClient appId={appId} checkin={checkin} />
+          <CheckinClient appId={appId} checkin={checkin} initialFields={fields} />
         </div>
       </div>
     </>

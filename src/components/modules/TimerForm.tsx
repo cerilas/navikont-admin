@@ -48,6 +48,28 @@ export default function TimerForm({ initialData, onChange }: { initialData: any,
           </div>
 
           <div className="col-12">
+            <label className="form-label">Başlama Mesajı / Buton Yazısı</label>
+            <input 
+              type="text" 
+              className="form-control" 
+              value={initialData.startText || ''} 
+              onChange={e => handleChange('startText', e.target.value)} 
+              placeholder="Örn: Çişim geldi, sayacı şimdi başlat"
+            />
+          </div>
+
+          <div className="col-12">
+            <label className="form-label">Bitiş Mesajı</label>
+            <input 
+              type="text" 
+              className="form-control" 
+              value={initialData.endText || ''} 
+              onChange={e => handleChange('endText', e.target.value)} 
+              placeholder="Örn: Şimdi gidebilirsiniz"
+            />
+          </div>
+
+          <div className="col-12">
             <label className="form-check">
               <input 
                 className="form-check-input" 

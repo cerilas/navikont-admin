@@ -21,6 +21,7 @@ import ReminderForm from '@/components/modules/ReminderForm';
 import ConsentForm from '@/components/modules/ConsentForm';
 import RiskAlertForm from '@/components/modules/RiskAlertForm';
 import TaskForm from '@/components/modules/TaskForm';
+import QuestionnaireForm from '@/components/modules/QuestionnaireForm';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -31,7 +32,7 @@ function SubmitButton() {
   );
 }
 
-export default function ContentFormClient({ appId, moduleId, moduleType, existingVersion }: any) {
+export default function ContentFormClient({ appId, moduleId, moduleType, existingVersion, availableModules, availableForms }: any) {
   const [state, formAction] = useActionState(async (prevState: any, formData: FormData) => {
     const res = await saveModuleContent(prevState, formData);
     if (res?.success) {
@@ -69,7 +70,8 @@ export default function ContentFormClient({ appId, moduleId, moduleType, existin
   if (type.includes('video')) ActiveForm = VideoForm;
   else if (type.includes('yazılı içerik') || type.includes('makale') || type.includes('html_content')) ActiveForm = TextForm;
   else if (type.includes('dosya') || type.includes('pdf') || type.includes('file_pdf')) ActiveForm = PdfForm;
-  else if (type.includes('quiz') || type.includes('test') || type.includes('soru-cevap') || type.includes('question_answer')) ActiveForm = QuizForm;
+  else if (type.includes('soru-cevap') || type.includes('question_answer')) ActiveForm = (props: any) => <QuestionnaireForm {...props} availableForms={availableForms} />;
+  else if (type.includes('quiz') || type.includes('test')) ActiveForm = QuizForm;
   else if (type.includes('ölçüm') || type.includes('measurement_input')) ActiveForm = MeasurementForm;
   else if (type.includes('nefes') || type.includes('breathing')) ActiveForm = BreathingForm;
   else if (type.includes('sayaç') || type.includes('timer')) ActiveForm = TimerForm;
@@ -78,7 +80,7 @@ export default function ContentFormClient({ appId, moduleId, moduleType, existin
   else if (type.includes('hedef') || type.includes('goal')) ActiveForm = GoalForm;
   else if (type.includes('hatırlatıcı') || type.includes('reminder')) ActiveForm = ReminderForm;
   else if (type.includes('onam') || type.includes('consent')) ActiveForm = ConsentForm;
-  else if (type.includes('risk') || type.includes('risk_alert')) ActiveForm = RiskAlertForm;
+  else if (type.includes('risk') || type.includes('risk_alert')) ActiveForm = (props: any) => <RiskAlertForm {...props} availableModules={availableModules} />;
   else if (type.includes('görev') || type.includes('task')) ActiveForm = TaskForm;
   else ActiveForm = GenericForm;
 
@@ -109,6 +111,7 @@ export default function ContentFormClient({ appId, moduleId, moduleType, existin
       </div>
 
           <ActiveForm 
+            appId={appId}
             initialData={contentObj} 
             onChange={setContentObj} 
             moduleName={moduleType} 

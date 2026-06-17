@@ -2,6 +2,7 @@ import db from '@/lib/db';
 import Link from 'next/link';
 import CreateFormButton from './CreateFormButton';
 import CreateCheckinButton from './CreateCheckinButton';
+import DeleteCheckinButton from './DeleteCheckinButton';
 
 export default async function FormsPage({ params }: { params: Promise<{ appId: string }> }) {
   const { appId } = await params;
@@ -149,6 +150,7 @@ export default async function FormsPage({ params }: { params: Promise<{ appId: s
                         </td>
                         <td className="text-end">
                           <Link href={`/apps/${appId}/forms/checkin/${checkin.id}`} className="btn btn-sm btn-outline-primary">Düzenle</Link>
+                          <DeleteCheckinButton appId={appId} checkinId={checkin.id} />
                         </td>
                       </tr>
                     ))}

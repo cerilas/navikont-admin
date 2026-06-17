@@ -204,13 +204,13 @@ export default function FormBuilderClient({
                     {qIndex + 1}
                   </span>
                   <div className="flex-fill">
-                    <input 
-                      type="text" 
+                    <textarea 
                       className="form-control form-control-lg fw-bold border-0 bg-transparent px-0 shadow-none" 
                       value={q.label} 
                       onChange={e => updateQuestion(qIndex, 'label', e.target.value)}
                       placeholder="Soru metnini girin..."
-                      style={{ fontSize: '1.2rem' }}
+                      rows={2}
+                      style={{ fontSize: '1.2rem', resize: 'vertical' }}
                     />
                   </div>
                   <div>

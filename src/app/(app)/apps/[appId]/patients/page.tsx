@@ -67,6 +67,7 @@ export default async function PatientsPage({
       e.current_day,
       u.full_name,
       u.email,
+      u.profile_image,
       j.name as journey_name
     FROM patient_app_enrollments e
     JOIN core_users u ON e.patient_user_id = u.id
@@ -94,6 +95,16 @@ export default async function PatientsPage({
       case 'cancelled': return <span className="badge bg-danger text-danger-fg">İptal Edildi</span>;
       default: return <span className="badge">{status}</span>;
     }
+  };
+
+  const getProfileImageUrl = (img: string | null) => {
+    if (!img) return null;
+    if (img.startsWith('http')) return img;
+    if (img.startsWith('data:')) return img;
+    if (img.startsWith('/uploads/')) return `${process.env.APP_BASE_URL || 'http://localhost:3000'}${img}`;
+    if (img.startsWith('/9j/')) return `data:image/jpeg;base64,${img}`;
+    if (img.startsWith('iVBORw0KGgo')) return `data:image/png;base64,${img}`;
+    return `data:image/jpeg;base64,${img}`;
   };
 
   return (
@@ -164,7 +175,7 @@ export default async function PatientsPage({
                         <tr key={p.enrollment_id}>
                           <td>
                             <div className="d-flex py-1 align-items-center">
-                              <span className="avatar me-2" style={{backgroundImage: `url(https://ui-avatars.com/api/?name=${encodeURIComponent(p.full_name)}&background=random)`}}></span>
+                              <span className="avatar me-2" style={{backgroundImage: `url(${getProfileImageUrl(p.profile_image) || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.full_name)}&background=random`})`}}></span>
                               <div className="flex-fill">
                                 <div className="font-weight-medium">{p.full_name}</div>
                               </div>

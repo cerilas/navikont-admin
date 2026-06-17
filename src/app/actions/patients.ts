@@ -154,3 +154,213 @@ export async function deletePatientEnrollment(enrollmentId: string, appId: strin
     return { error: 'Hasta silinirken bir hata oluştu.' };
   }
 }
+
+export async function updatePatientDay(enrollmentId: string, newDay: number) {
+  try {
+    await db.query(`UPDATE patient_app_enrollments SET current_day = $1, updated_at = NOW() WHERE id = $2`, [newDay, enrollmentId]);
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating patient day:', error);
+    return { error: 'Gününüz güncellenirken bir hata oluştu.' };
+  }
+}
+
+export async function getDetailedModuleAnswers(
+  enrollmentId: string, 
+  patientUserId: string, 
+  moduleType: string, 
+  completedAt: string,
+  moduleVersionId?: string
+) {
+  try {
+    if (!completedAt) return null;
+    const targetDate = new Date(completedAt).toISOString().split('T')[0];
+    
+    // Attempt to extract template id from module version content if provided
+    let templateId: string | null = null;
+    if (moduleVersionId) {
+      const mvRes = await db.query('SELECT content FROM content_module_versions WHERE id = $1', [moduleVersionId]);
+      if (mvRes.rows.length > 0 && mvRes.rows[0].content) {
+        if (moduleType === 'questionnaire' || moduleType === 'question_answer') {
+          templateId = mvRes.rows[0].content.questionnaireId || mvRes.rows[0].content.formId;
+        } else if (moduleType === 'checkin') {
+          templateId = mvRes.rows[0].content.checkinTemplateId;
+        }
+      }
+    }
+
+    if (moduleType === 'questionnaire' || moduleType === 'question_answer') {
+      let query = `
+        SELECT r.id, r.total_score, r.risk_level, r.submitted_at
+        FROM patient_questionnaire_responses r
+        ${templateId ? 'JOIN forms_questionnaire_versions fqv ON fqv.id = r.questionnaire_version_id' : ''}
+        WHERE r.enrollment_id = $1 AND r.patient_user_id = $2
+          AND DATE(r.submitted_at AT TIME ZONE 'UTC') = $3
+      `;
+      let params: any[] = [enrollmentId, patientUserId, targetDate];
+      if (templateId) {
+        query += ` AND (fqv.questionnaire_id::text = $4 OR fqv.id::text = $4)`;
+        params.push(templateId);
+      }
+      query += ` ORDER BY r.submitted_at DESC LIMIT 1`;
+      
+      const res = await db.query(query, params);
+
+      if (res.rows.length === 0) return null;
+      const responseId = res.rows[0].id;
+
+      const answers = await db.query(`
+        SELECT 
+          a.answer_value, 
+          a.score, 
+          q.label as question_text, 
+          q.question_type,
+          COALESCE(o.option_label, fallback_o.option_label) as option_label
+        FROM patient_questionnaire_answers a
+        JOIN forms_questions q ON q.id = a.question_id
+        JOIN forms_questionnaire_versions fqv ON fqv.id = q.questionnaire_version_id
+        LEFT JOIN forms_question_options o ON o.question_id = q.id AND o.option_value = REPLACE(a.answer_value::text, '"', '')
+        LEFT JOIN LATERAL (
+          SELECT fo.option_label
+          FROM forms_questions fq
+          JOIN forms_question_options fo ON fo.question_id = fq.id
+          WHERE fq.questionnaire_version_id IN (
+            SELECT id FROM forms_questionnaire_versions WHERE questionnaire_id = fqv.questionnaire_id
+          )
+          AND fq.question_key = q.question_key
+          AND fo.option_value = REPLACE(a.answer_value::text, '"', '')
+          LIMIT 1
+        ) fallback_o ON o.option_label IS NULL
+        WHERE a.response_id = $1
+        ORDER BY q.sort_order ASC
+      `, [responseId]);
+
+      return {
+        summary: res.rows[0],
+        answers: answers.rows
+      };
+    } else if (moduleType === 'checkin') {
+      let query = `
+        SELECT s.id, s.checkin_date, s.submitted_at, s.streak_day
+        FROM patient_checkin_submissions s
+        ${templateId ? 'JOIN forms_checkin_template_versions fctv ON fctv.id = s.checkin_template_version_id' : ''}
+        WHERE s.enrollment_id = $1 AND s.patient_user_id = $2
+          AND s.checkin_date = $3
+      `;
+      let params: any[] = [enrollmentId, patientUserId, targetDate];
+      if (templateId) {
+        query += ` AND (fctv.checkin_template_id::text = $4 OR fctv.id::text = $4)`;
+        params.push(templateId);
+      }
+      query += ` ORDER BY s.submitted_at DESC LIMIT 1`;
+
+      const res = await db.query(query, params);
+
+      if (res.rows.length === 0) return null;
+      const submissionId = res.rows[0].id;
+
+      const values = await db.query(`
+        SELECT v.value, v.numeric_value, v.text_value, v.boolean_value, f.label, f.field_type
+        FROM patient_checkin_values v
+        JOIN forms_checkin_fields f ON f.id = v.field_id
+        WHERE v.submission_id = $1
+        ORDER BY f.sort_order ASC
+      `, [submissionId]);
+
+      return {
+        summary: res.rows[0],
+        answers: values.rows
+      };
+    }
+    
+    return null;
+  } catch (err) {
+    console.error('Error fetching details:', err);
+    return null;
+  }
+}
+
+export async function deleteModuleProgress(
+  logId: string,
+  moduleType: string,
+  completedAt: string,
+  enrollmentId: string,
+  patientUserId: string,
+  moduleVersionId?: string
+) {
+  try {
+    if (completedAt) {
+      const targetDate = new Date(completedAt).toISOString().split('T')[0];
+      
+      let templateId: string | null = null;
+      if (moduleVersionId) {
+        const mvRes = await db.query('SELECT content FROM content_module_versions WHERE id = $1', [moduleVersionId]);
+        if (mvRes.rows.length > 0 && mvRes.rows[0].content) {
+          if (moduleType === 'questionnaire') {
+            templateId = mvRes.rows[0].content.questionnaireId || mvRes.rows[0].content.formId;
+          } else if (moduleType === 'checkin') {
+            templateId = mvRes.rows[0].content.checkinTemplateId;
+          }
+        }
+      }
+      
+      if (moduleType === 'questionnaire') {
+        let query = `
+          DELETE FROM patient_questionnaire_responses 
+          WHERE enrollment_id = $1 AND patient_user_id = $2 AND DATE(submitted_at AT TIME ZONE 'UTC') = $3
+        `;
+        let params: any[] = [enrollmentId, patientUserId, targetDate];
+        if (templateId) {
+          query += ` AND questionnaire_version_id IN (SELECT id FROM forms_questionnaire_versions WHERE questionnaire_id::text = $4 OR id::text = $4)`;
+          params.push(templateId);
+        }
+        await db.query(query, params);
+      } else if (moduleType === 'checkin') {
+        let query = `
+          DELETE FROM patient_checkin_submissions
+          WHERE enrollment_id = $1 AND patient_user_id = $2 AND checkin_date = $3
+        `;
+        let params: any[] = [enrollmentId, patientUserId, targetDate];
+        if (templateId) {
+          query += ` AND checkin_template_version_id IN (SELECT id FROM forms_checkin_template_versions WHERE checkin_template_id::text = $4 OR id::text = $4)`;
+          params.push(templateId);
+        }
+        await db.query(query, params);
+      }
+    }
+    
+    // Always delete the progress log itself
+    await db.query(`DELETE FROM patient_module_progress WHERE id = $1`, [logId]);
+
+    // Recalculate progress_percent
+    const enrollmentRes = await db.query(
+      `SELECT journey_id, app_id FROM patient_app_enrollments WHERE id = $1`,
+      [enrollmentId]
+    );
+    if (enrollmentRes.rows.length > 0) {
+      const enrollment = enrollmentRes.rows[0];
+      const totalStepsResult = await db.query(
+        `SELECT COUNT(*) AS total FROM content_journey_steps WHERE journey_id = $1`,
+        [enrollment.journey_id]
+      );
+      const completedResult = await db.query(
+        `SELECT COUNT(*) AS completed FROM patient_module_progress
+         WHERE enrollment_id = $1 AND patient_user_id = $2 AND app_id = $3 AND status = 'completed'`,
+        [enrollmentId, patientUserId, enrollment.app_id]
+      );
+      const total = parseInt(totalStepsResult.rows[0].total) || 1;
+      const completed = parseInt(completedResult.rows[0].completed) || 0;
+      const newProgressPercent = Math.round((completed / total) * 100);
+
+      await db.query(
+        `UPDATE patient_app_enrollments SET progress_percent = $1, updated_at = NOW() WHERE id = $2`,
+        [newProgressPercent, enrollmentId]
+      );
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting progress log:', error);
+    return { error: 'Veri silinirken bir hata oluştu.' };
+  }
+}

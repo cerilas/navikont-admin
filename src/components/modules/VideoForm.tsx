@@ -32,6 +32,16 @@ export default function VideoForm({ initialData, onChange }: { initialData: any,
           />
         </div>
         <div className="mb-3">
+          <label className="form-label">Video Açıklaması (Opsiyonel)</label>
+          <textarea 
+            className="form-control" 
+            rows={3}
+            value={initialData.description || ''} 
+            onChange={e => handleChange('description', e.target.value)} 
+            placeholder="Videonun hemen altında görünecek açıklama veya eğitim metni..." 
+          />
+        </div>
+        <div className="mb-3">
           <label className="form-label">Video İçi Etkileşimler (Opsiyonel)</label>
           <input 
             type="text" 
