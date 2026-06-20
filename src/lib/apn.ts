@@ -23,7 +23,7 @@ export function getApnProvider() {
         keyId: keyId,
         teamId: teamId
       },
-      production: process.env.NODE_ENV === 'production' // true for production, false for sandbox
+      production: process.env.APN_USE_SANDBOX === 'true' ? false : process.env.NODE_ENV === 'production'
     });
     return apnProvider;
   } catch (error) {

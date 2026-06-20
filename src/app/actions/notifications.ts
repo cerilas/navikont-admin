@@ -187,12 +187,12 @@ export async function sendNotificationToAll(appId: string, templateId: string, s
         const title = template.title_template || 'Navikont Bildirim';
         const body = template.body_template;
         
-        // This is non-blocking to the return
-        sendPushNotification(deviceTokens, title, body, bundleId).then(result => {
+        try {
+          const result = await sendPushNotification(deviceTokens, title, body, bundleId);
           console.log(`APNs Batch ${batchId} completed: Sent ${result.sent}, Failed ${result.failed}`);
-        }).catch(err => {
+        } catch (err) {
           console.error(`APNs Batch ${batchId} failed:`, err);
-        });
+        }
       }
     }
 
