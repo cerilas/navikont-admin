@@ -2,6 +2,7 @@
 
 import db from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { sendPushNotification } from '@/lib/apn';
 
 export interface NotificationTemplateInput {
   id?: string;
@@ -125,7 +126,7 @@ export async function toggleNotificationTemplateStatus(appId: string, templateId
   }
 }
 
-export async function sendNotificationToAll(appId: string, templateId: string) {
+export async function sendNotificationToAll(appId: string, templateId: string, source: 'manual' | 'auto' = 'manual') {
   try {
     // 1. Get template details
     const templateRes = await db.query(
@@ -155,9 +156,9 @@ export async function sendNotificationToAll(appId: string, templateId: string) {
         $3 as body,
         'sent' as status,
         CURRENT_TIMESTAMP as sent_at,
-        jsonb_build_object('template_id', $4::text, 'batch_id', $5::text, 'template_code', $6::text)
+        jsonb_build_object('template_id', $4::text, 'batch_id', $5::text, 'template_code', $6::text, 'source', $7::text)
       FROM patient_app_enrollments
-      WHERE app_id = $7 AND status = 'active'
+      WHERE app_id = $8 AND status = 'active'
     `, [
       template.channel,
       template.title_template || null,
@@ -165,8 +166,35 @@ export async function sendNotificationToAll(appId: string, templateId: string) {
       templateId,
       batchId,
       template.code,
+      source,
       appId
     ]);
+
+    // 3. APNs Push Notification Send
+    if (template.channel === 'push') {
+      const tokensRes = await db.query(`
+        SELECT d.device_token 
+        FROM patient_devices d
+        JOIN patient_app_enrollments e ON e.patient_user_id = d.patient_user_id
+        WHERE e.app_id = $1 AND e.status = 'active' AND d.platform = 'ios'
+      `, [appId]);
+
+      const deviceTokens = tokensRes.rows.map(r => r.device_token).filter(Boolean);
+      
+      if (deviceTokens.length > 0) {
+        // We need the bundle ID. Assume it's in .env or hardcoded for now: com.cerilas.navikont
+        const bundleId = process.env.APN_BUNDLE_ID || 'com.cerilas.navikont';
+        const title = template.title_template || 'Navikont Bildirim';
+        const body = template.body_template;
+        
+        // This is non-blocking to the return
+        sendPushNotification(deviceTokens, title, body, bundleId).then(result => {
+          console.log(`APNs Batch ${batchId} completed: Sent ${result.sent}, Failed ${result.failed}`);
+        }).catch(err => {
+          console.error(`APNs Batch ${batchId} failed:`, err);
+        });
+      }
+    }
 
     revalidatePath(`/apps/${appId}/notifications`);
     return { success: true, batchId };
@@ -176,13 +204,26 @@ export async function sendNotificationToAll(appId: string, templateId: string) {
   }
 }
 
-export async function getNotificationHistory(appId: string) {
+export async function getNotificationHistory(appId: string, page: number = 1, limit: number = 10) {
   try {
+    const offset = (page - 1) * limit;
+
+    // Get total count of distinct batches
+    const countRes = await db.query(`
+      SELECT COUNT(DISTINCT metadata->>'batch_id') as total
+      FROM patient_notifications
+      WHERE app_id = $1 AND metadata->>'batch_id' IS NOT NULL
+    `, [appId]);
+    
+    const totalCount = parseInt(countRes.rows[0].total) || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
     const res = await db.query(`
       SELECT 
         metadata->>'batch_id' as batch_id,
         metadata->>'template_id' as template_id,
         metadata->>'template_code' as template_code,
+        metadata->>'source' as source,
         channel,
         MAX(sent_at) as sent_at,
         COUNT(*) as total_sent,
@@ -193,11 +234,13 @@ export async function getNotificationHistory(appId: string) {
         metadata->>'batch_id',
         metadata->>'template_id',
         metadata->>'template_code',
+        metadata->>'source',
         channel
       ORDER BY MAX(sent_at) DESC
-    `, [appId]);
+      LIMIT $2 OFFSET $3
+    `, [appId, limit, offset]);
 
-    return { history: res.rows };
+    return { history: res.rows, totalPages, currentPage: page };
   } catch (error: any) {
     console.error('Error fetching notification history:', error);
     return { error: 'Geçmiş alınırken bir hata oluştu: ' + error.message };

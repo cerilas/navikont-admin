@@ -165,6 +165,39 @@ export async function updatePatientDay(enrollmentId: string, newDay: number) {
   }
 }
 
+export async function resetPatientProgress(enrollmentId: string) {
+  try {
+    await db.query('BEGIN');
+    
+    // Delete from module progress
+    await db.query('DELETE FROM patient_module_progress WHERE enrollment_id = $1', [enrollmentId]);
+    
+    // Delete from day completions (if table exists)
+    try {
+      await db.query('DELETE FROM patient_day_completions WHERE enrollment_id = $1', [enrollmentId]);
+    } catch (e) {
+      // ignore if table doesn't exist
+    }
+
+    // Reset current day and dates
+    await db.query(`
+      UPDATE patient_app_enrollments 
+      SET current_day = 1, progress_percent = 0, start_date = CURRENT_DATE, activated_at = NOW(), updated_at = NOW() 
+      WHERE id = $1
+    `, [enrollmentId]);
+
+    // Delete or reset streaks
+    await db.query('DELETE FROM patient_streaks WHERE enrollment_id = $1', [enrollmentId]);
+
+    await db.query('COMMIT');
+    return { success: true };
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Error resetting patient progress:', error);
+    return { error: 'İlerleme sıfırlanırken bir hata oluştu.' };
+  }
+}
+
 export async function getDetailedModuleAnswers(
   enrollmentId: string, 
   patientUserId: string, 

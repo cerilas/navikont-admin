@@ -52,7 +52,8 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
     SELECT pmp.id, pmp.module_version_id, pmp.status, pmp.started_at, pmp.completed_at, pmp.progress_percent, pmp.result_data, pmp.day_number,
            cmv.title AS module_title,
            cm.name AS module_name,
-           cmt.code AS module_type
+           cmt.code AS module_type,
+           cmv.content AS module_content
     FROM patient_module_progress pmp
     JOIN content_module_versions cmv ON cmv.id = pmp.module_version_id
     JOIN content_modules cm ON cm.id = cmv.module_id

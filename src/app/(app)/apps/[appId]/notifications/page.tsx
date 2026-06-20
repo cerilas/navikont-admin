@@ -32,8 +32,9 @@ export default async function NotificationsPage({ params }: { params: Promise<{ 
   }));
 
   // 3. Fetch Notification History
-  const historyRes = await getNotificationHistory(appId);
+  const historyRes = await getNotificationHistory(appId, 1, 10);
   const initialHistory = historyRes.history || [];
+  const initialTotalPages = historyRes.totalPages || 1;
 
   return (
     <>
@@ -58,6 +59,7 @@ export default async function NotificationsPage({ params }: { params: Promise<{ 
             appId={appId}
             initialTemplates={initialTemplates}
             initialHistory={initialHistory}
+            initialTotalPages={initialTotalPages}
           />
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useParams } from 'next/navigation';
-import { updateEnrollmentStatus, deletePatientEnrollment, getDetailedModuleAnswers } from '@/app/actions/patients';
+import { updateEnrollmentStatus, deletePatientEnrollment, getDetailedModuleAnswers, resetPatientProgress } from '@/app/actions/patients';
 import { sendPasswordResetEmail, sendPasswordResetSMS } from '@/app/actions/auth';
 import EditPatientModal from './EditPatientModal';
 import Swal from 'sweetalert2';
@@ -153,6 +153,33 @@ export default function PatientDetailClient({ patient, journeys, progressLogs = 
     });
   };
 
+  const handleResetProgress = () => {
+    Swal.fire({
+      title: 'Tüm İlerlemeyi Sıfırla?',
+      text: 'Hastanın bugüne kadar yaptığı tüm görevler, anketler ve gün ilerlemeleri tamamen silinecek ve 1. Güne geri dönecektir. Emin misiniz?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Evet, İlerlemeyi Sıfırla',
+      confirmButtonColor: '#ff9800',
+      cancelButtonText: 'İptal',
+      showLoaderOnConfirm: true,
+      preConfirm: async () => {
+        const res = await resetPatientProgress(patient.enrollment_id);
+        if (res?.error) {
+          Swal.showValidationMessage(res.error);
+        }
+        return res;
+      },
+      allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire('Sıfırlandı!', 'Hastanın ilerlemesi başarıyla sıfırlandı.', 'success').then(() => {
+          window.location.reload();
+        });
+      }
+    });
+  };
+
   return (
     <>
       <div className="card">
@@ -277,9 +304,13 @@ export default function PatientDetailClient({ patient, journeys, progressLogs = 
                 <div className="alert alert-danger bg-danger-lt">
                   <strong>Dikkat:</strong> Hastayı sildiğinizde, hastanın bu uygulamadaki tüm ilerlemesi, form yanıtları ve modül istatistikleri kalıcı olarak silinecektir.
                 </div>
-                <button onClick={handleDeletePatient} disabled={isPending} className="btn btn-danger w-100">
+                <button onClick={handleDeletePatient} disabled={isPending} className="btn btn-danger w-100 mb-3">
                   <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0" /><path d="M10 11l0 6" /><path d="M14 11l0 6" /><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>
                   Hastayı Sistemden Sil
+                </button>
+                <button onClick={handleResetProgress} disabled={isPending} className="btn btn-warning w-100 text-white">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M19.95 11a8 8 0 1 0 -.5 4m.5 5v-5h-5" /></svg>
+                  Tüm İlerlemeyi Sıfırla
                 </button>
               </div>
             </div>
@@ -342,21 +373,34 @@ export default function PatientDetailClient({ patient, journeys, progressLogs = 
                                 </div>
                               ) : '-'}
                               {['risk', 'risk_alert'].includes(log.module_type) && log.result_data && typeof log.result_data === 'object' && log.result_data.score !== undefined && (
-                                <div className="mt-2 p-2 rounded bg-light border" style={{ minWidth: '150px' }}>
-                                  <div className="small text-muted mb-1">
-                                    <strong>Puan:</strong> <span className="text-dark fw-bold">{log.result_data.score}</span> 
-                                    <span className="mx-1">/</span> 
-                                    Eşik: {log.result_data.threshold}
+                                <div className={`mt-2 p-3 rounded border d-flex flex-column gap-2 ${log.result_data.riskStatus === 'risk' ? 'bg-danger-lt border-danger border-opacity-50' : 'bg-success-lt border-success border-opacity-50'}`} style={{ minWidth: '220px' }}>
+                                  <div className="d-flex align-items-center justify-content-between">
+                                    <span className={`fw-bold d-flex align-items-center gap-1 ${log.result_data.riskStatus === 'risk' ? 'text-danger' : 'text-success'}`}>
+                                      {log.result_data.riskStatus === 'risk' ? (
+                                        <>
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>
+                                          Riskli
+                                        </>
+                                      ) : (
+                                        <>
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M9 12l2 2l4 -4" /></svg>
+                                          Güvenli
+                                        </>
+                                      )}
+                                    </span>
+                                    <span className="badge bg-white text-dark shadow-sm border">
+                                      Puan: {log.result_data.score}
+                                    </span>
                                   </div>
-                                  <div className="small">
-                                    <strong>Sonuç: </strong> 
-                                    {log.result_data.riskStatus === 'risk' ? (
-                                      <span className="text-danger fw-bold badge bg-danger-lt px-2 py-1">Risk Sınırı Aşıldı</span>
-                                    ) : log.result_data.riskStatus === 'safe' ? (
-                                      <span className="text-success fw-bold badge bg-success-lt px-2 py-1">Güvenli</span>
-                                    ) : (
-                                      <span className="text-muted">Bilinmiyor</span>
-                                    )}
+                                  <div className="progress progress-sm" title={`Eşik Değeri: ${log.result_data.threshold}`}>
+                                    <div 
+                                      className={`progress-bar ${log.result_data.riskStatus === 'risk' ? 'bg-danger' : 'bg-success'}`} 
+                                      style={{ width: `${Math.min(100, (Number(log.result_data.score) / (Number(log.result_data.threshold) * 1.5 || 10)) * 100)}%`}}
+                                    ></div>
+                                  </div>
+                                  <div className="text-muted text-xs d-flex justify-content-between align-items-center">
+                                    <span>0</span>
+                                    <span className="fw-medium px-1 bg-white rounded border">Eşik: {log.result_data.threshold}</span>
                                   </div>
                                 </div>
                               )}
@@ -489,33 +533,88 @@ export default function PatientDetailClient({ patient, journeys, progressLogs = 
                   ) : (
                     <div>
                       <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
-                        <h4 className="m-0 text-primary">Anket Sonuçları</h4>
+                        <h4 className="m-0 text-primary d-flex align-items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="icon icon-md" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" /><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" /><path d="M9 14l2 2l4 -4" /></svg>
+                          Anket Sonuçları
+                        </h4>
                         <div className="text-end">
-                          <div className="small text-muted mb-1">Toplam Puan</div>
-                          <div className="fs-2 fw-bold text-dark">{detailedData.summary.total_score}</div>
+                          <div className="small text-muted mb-1 fw-medium text-uppercase">Toplam Puan</div>
+                          <div className="fs-1 fw-bold text-dark">{detailedData.summary.total_score}</div>
                         </div>
                       </div>
 
-                      {detailedData.answers.map((ans: any, idx: number) => (
-                        <div key={idx} className="mb-3 bg-white rounded p-3 border shadow-sm">
-                          <div className="fw-medium mb-2 text-dark">{idx + 1}. {ans.question_text}</div>
-                          <div className="d-flex justify-content-between align-items-center mt-3 pt-2 border-top border-light">
-                            <span className="text-primary fw-bold px-2 py-1 bg-primary-lt rounded">
-                              {ans.option_label ? ans.option_label : (ans.answer_value || '').replace(/['"]+/g, '')}
-                            </span>
-                            {ans.score > 0 && <span className="badge bg-success-lt px-2 py-1">+{ans.score} Puan</span>}
+                      <div className="list-group list-group-flush border rounded shadow-sm">
+                        {detailedData.answers.map((ans: any, idx: number) => (
+                          <div key={idx} className="list-group-item p-4 bg-white">
+                            <div className="d-flex justify-content-between align-items-start gap-4">
+                              <div className="flex-grow-1">
+                                <div className="text-muted text-xs fw-bold text-uppercase mb-2 d-flex align-items-center gap-2">
+                                  <span className="badge bg-primary-lt">Soru {idx + 1}</span>
+                                </div>
+                                <div className="fw-medium text-dark mb-3 fs-4">{ans.question_text}</div>
+                                <div className="d-inline-flex align-items-center gap-2 px-3 py-2 bg-light rounded text-primary fw-bold border border-primary border-opacity-25">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="icon text-primary" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 9h8" /><path d="M8 13h6" /><path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-5l-5 3v-3h-2a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12z" /></svg>
+                                  {ans.option_label ? ans.option_label : (ans.answer_value || '').replace(/['"]+/g, '')}
+                                </div>
+                              </div>
+                              <div className="d-flex flex-column align-items-center justify-content-center">
+                                {ans.score > 0 ? (
+                                  <div className="avatar bg-success-lt text-success fw-bold border border-success border-opacity-25" title="Kazanılan Puan">+{ans.score}</div>
+                                ) : (
+                                  <div className="avatar bg-secondary-lt text-secondary fw-bold" title="Puan Yok">0</div>
+                                )}
+                                <span className="text-muted text-xs mt-1">Puan</span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
+              ) : selectedLog?.result_data && typeof selectedLog.result_data === 'object' ? (
+                <div>
+                  <h4 className="text-primary mb-3 pb-2 border-bottom">Gönderilen Yanıtlar</h4>
+                  <div className="table-responsive border rounded">
+                    <table className="table table-vcenter card-table table-striped mb-0">
+                      <thead>
+                        <tr>
+                          <th>Veri / Alan</th>
+                          <th>Değer / Yanıt</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(selectedLog.result_data).map(([key, value], idx) => (
+                          <tr key={idx}>
+                            <td className="fw-medium text-capitalize">
+                              {(() => {
+                                let label = key.replace(/[-_]/g, ' ');
+                                if (selectedLog?.module_content?.metrics && Array.isArray(selectedLog.module_content.metrics)) {
+                                  const metric = selectedLog.module_content.metrics.find((m: any) => m.id === key);
+                                  if (metric && metric.name) {
+                                    label = metric.name;
+                                    if (metric.unit) label += ` (${metric.unit})`;
+                                  }
+                                }
+                                return label;
+                              })()}
+                            </td>
+                            <td>
+                              {typeof value === 'boolean' 
+                                ? (value ? 'Evet' : 'Hayır') 
+                                : (typeof value === 'object' ? JSON.stringify(value) : String(value))
+                              }
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               ) : selectedLog?.result_data ? (
                 <div>
-                  <h4 className="text-primary mb-3 pb-2 border-bottom">Modül Verisi (JSON)</h4>
-                  <pre className="bg-dark text-light p-3 rounded overflow-auto" style={{ maxHeight: '400px' }}>
-                    {JSON.stringify(selectedLog.result_data, null, 2)}
-                  </pre>
+                  <h4 className="text-primary mb-3 pb-2 border-bottom">Gönderilen Yanıtlar</h4>
+                  <div className="p-3 bg-light rounded border">{String(selectedLog.result_data)}</div>
                 </div>
               ) : (
                 <div className="text-center text-muted py-5">

@@ -6,6 +6,7 @@ import {
   deleteNotificationTemplate, 
   toggleNotificationTemplateStatus,
   sendNotificationToAll,
+  getNotificationHistory,
   NotificationTemplateInput 
 } from '@/app/actions/notifications';
 import Swal from 'sweetalert2';
@@ -24,6 +25,7 @@ interface NotificationHistoryItem {
   batch_id: string;
   template_id: string;
   template_code: string;
+  source?: 'manual' | 'auto';
   channel: string;
   sent_at: string;
   total_sent: string | number;
@@ -34,12 +36,19 @@ interface NotificationsClientProps {
   appId: string;
   initialTemplates: Template[];
   initialHistory?: NotificationHistoryItem[];
+  initialTotalPages?: number;
 }
 
-export default function NotificationsClient({ appId, initialTemplates, initialHistory = [] }: NotificationsClientProps) {
+export default function NotificationsClient({ appId, initialTemplates, initialHistory = [], initialTotalPages = 1 }: NotificationsClientProps) {
   const [activeTab, setActiveTab] = useState<'templates' | 'history'>('templates');
   const [templates, setTemplates] = useState<Template[]>(initialTemplates);
   const [history, setHistory] = useState<NotificationHistoryItem[]>(initialHistory);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(initialTotalPages);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
   const [isPending, startTransition] = useTransition();
 
   // Search & Filter State
@@ -220,6 +229,32 @@ export default function NotificationsClient({ appId, initialTemplates, initialHi
     });
   };
 
+  // Handle Copy Webhook URL
+  const handleCopyWebhook = (code: string) => {
+    // Generate the URL dynamically based on the current origin
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    // The secret is ideally injected by the backend to the client, but since we didn't pass it,
+    // we'll provide a placeholder or fetch it. For security, we'll prompt the user to replace it.
+    // In our .env we set it to 'navikont_secure_cron_trigger'.
+    const secret = 'navikont_secure_cron_trigger'; 
+    const webhookUrl = `${origin}/api/webhooks/trigger-notification?appId=${appId}&code=${code}&secret=${secret}`;
+
+    navigator.clipboard.writeText(webhookUrl).then(() => {
+      Swal.fire({
+        title: 'Kopyalandı!',
+        text: 'Webhook URL panoya kopyalandı. cron-job.org panelinde kullanabilirsiniz.',
+        icon: 'success',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000
+      });
+    }).catch(err => {
+      console.error('Failed to copy!', err);
+      Swal.fire('Hata', 'URL kopyalanamadı.', 'error');
+    });
+  };
+
   // Filter templates based on search and channel tab selection
   const filteredTemplates = templates.filter(t => {
     const matchesSearch = t.code.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -247,6 +282,17 @@ export default function NotificationsClient({ appId, initialTemplates, initialHi
       case 'in_app': return 'Uygulama İçi (In-App)';
       default: return channel;
     }
+  };
+
+  const loadHistoryPage = async (page: number) => {
+    setIsLoadingHistory(true);
+    const res = await getNotificationHistory(appId, page, 10);
+    if (!res.error) {
+      setHistory(res.history || []);
+      setTotalPages(res.totalPages || 1);
+      setCurrentPage(res.currentPage || 1);
+    }
+    setIsLoadingHistory(false);
   };
 
   return (
@@ -421,6 +467,14 @@ export default function NotificationsClient({ appId, initialTemplates, initialHi
                             Gönder
                           </button>
                           <button 
+                            className="btn btn-outline-info btn-sm"
+                            onClick={() => handleCopyWebhook(template.code)}
+                            disabled={isPending || !template.is_active}
+                            title="Cron tetikleyici linkini kopyala"
+                          >
+                            Webhook Kopyala
+                          </button>
+                          <button 
                             className="btn btn-white btn-sm"
                             onClick={() => handleOpenEditModal(template)}
                             disabled={isPending}
@@ -452,6 +506,7 @@ export default function NotificationsClient({ appId, initialTemplates, initialHi
               <tr>
                 <th>Gönderim Tarihi</th>
                 <th>Şablon Kodu</th>
+                <th>Tetiklenme Türü</th>
                 <th>Kanal</th>
                 <th className="text-end">Toplam Gönderilen</th>
                 <th className="text-end">Toplam Okunan</th>
@@ -459,9 +514,16 @@ export default function NotificationsClient({ appId, initialTemplates, initialHi
               </tr>
             </thead>
             <tbody>
-              {history.length === 0 ? (
+              {isLoadingHistory ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-4 text-muted">
+                  <td colSpan={7} className="text-center py-4 text-muted">
+                    <div className="spinner-border spinner-border-sm me-2" role="status"></div>
+                    Yükleniyor...
+                  </td>
+                </tr>
+              ) : history.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-4 text-muted">
                     Henüz gönderilmiş toplu bildirim bulunmuyor.
                   </td>
                 </tr>
@@ -477,6 +539,13 @@ export default function NotificationsClient({ appId, initialTemplates, initialHi
                       </td>
                       <td data-label="Şablon Kodu">
                         <span className="font-monospace fw-bold">{item.template_code}</span>
+                      </td>
+                      <td data-label="Tetiklenme Türü">
+                        {item.source === 'auto' ? (
+                          <span className="badge bg-purple-lt"><svg xmlns="http://www.w3.org/2000/svg" className="icon icon-sm me-1" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 2v20M17 5l-10 14M16.732 4.125a1.5 1.5 0 1 1 -2.121 2.121M7.268 19.875a1.5 1.5 0 1 1 2.121 -2.121" /></svg> Otomatik</span>
+                        ) : (
+                          <span className="badge bg-blue-lt"><svg xmlns="http://www.w3.org/2000/svg" className="icon icon-sm me-1" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 8a3.5 3 0 0 1 3.5 -3h1a3.5 3 0 0 1 3.5 3a3 3 0 0 1 -2 3a3 4 0 0 0 -2 4" /><path d="M12 19l0 .01" /></svg> Manuel</span>
+                        )}
                       </td>
                       <td data-label="Kanal">
                         <span className={getChannelBadgeClass(item.channel)}>
@@ -503,6 +572,33 @@ export default function NotificationsClient({ appId, initialTemplates, initialHi
               )}
             </tbody>
           </table>
+          
+          {totalPages > 1 && (
+            <div className="card-footer d-flex align-items-center">
+              <p className="m-0 text-muted">
+                Toplam <span>{totalPages}</span> sayfadan <span>{currentPage}</span>. sayfası gösteriliyor
+              </p>
+              <ul className="pagination m-0 ms-auto">
+                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                  <button className="page-link" onClick={() => loadHistoryPage(currentPage - 1)} disabled={currentPage === 1}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 6l-6 6l6 6" /></svg>
+                    Önceki
+                  </button>
+                </li>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <li key={page} className={`page-item ${currentPage === page ? 'active' : ''}`}>
+                    <button className="page-link" onClick={() => loadHistoryPage(page)}>{page}</button>
+                  </li>
+                ))}
+                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                  <button className="page-link" onClick={() => loadHistoryPage(currentPage + 1)} disabled={currentPage === totalPages}>
+                    Sonraki
+                    <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6l6 6l-6 6" /></svg>
+                  </button>
+                </li>
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
