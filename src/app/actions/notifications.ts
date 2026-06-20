@@ -192,17 +192,25 @@ export async function sendNotificationToAll(appId: string, templateId: string, s
           console.log(`APNs Batch ${batchId} completed: Sent ${result.sent}, Failed ${result.failed}`);
           
           if (result.failed > 0 || result.error) {
+            let errorText = '';
+            try {
+              errorText = JSON.stringify(result.failures || result.error);
+            } catch(e) {
+              errorText = String(result.failures || result.error);
+            }
             await db.query(
-              `UPDATE patient_notifications SET status = 'failed', metadata = jsonb_set(metadata, '{error}', $1::jsonb) WHERE metadata->>'batch_id' = $2`, 
-              [JSON.stringify(result.failures || result.error), batchId]
+              `UPDATE patient_notifications SET status = 'failed' WHERE metadata->>'batch_id' = $1`, 
+              [batchId]
             );
+            await db.query(`INSERT INTO temp_apn_logs (log_text) VALUES ($1)`, [`Batch ${batchId} Error: ` + errorText]);
           }
         } catch (err: any) {
           console.error(`APNs Batch ${batchId} failed:`, err);
           await db.query(
-            `UPDATE patient_notifications SET status = 'failed', metadata = jsonb_set(metadata, '{error}', $1::jsonb) WHERE metadata->>'batch_id' = $2`, 
-            [JSON.stringify(err.message || 'Unknown error'), batchId]
+            `UPDATE patient_notifications SET status = 'failed' WHERE metadata->>'batch_id' = $1`, 
+            [batchId]
           );
+          await db.query(`INSERT INTO temp_apn_logs (log_text) VALUES ($1)`, [`Batch ${batchId} Exception: ` + String(err.message || err)]);
         }
       }
     }
