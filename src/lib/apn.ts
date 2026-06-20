@@ -17,9 +17,13 @@ export function getApnProvider() {
   }
 
   try {
+    const formattedKey = key.includes('-----BEGIN PRIVATE KEY-----') 
+      ? key.replace(/\\n/g, '\n') 
+      : Buffer.from(key, 'base64').toString('ascii');
+
     apnProvider = new apn.Provider({
       token: {
-        key: key.includes('-----BEGIN PRIVATE KEY-----') ? key : Buffer.from(key, 'base64').toString('ascii'),
+        key: formattedKey,
         keyId: keyId,
         teamId: teamId
       },
