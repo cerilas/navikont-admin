@@ -182,8 +182,8 @@ export async function sendNotificationToAll(appId: string, templateId: string, s
       const deviceTokens = tokensRes.rows.map(r => r.device_token).filter(Boolean);
       
       if (deviceTokens.length > 0) {
-        // We need the bundle ID. Assume it's in .env or hardcoded for now: com.cerilas.navikont
-        const bundleId = process.env.APN_BUNDLE_ID || 'com.cerilas.navikont';
+        // We need the bundle ID. Assume it's in .env or hardcoded for now: com.cerilas.navikont.navikont
+        const bundleId = process.env.APN_BUNDLE_ID || 'com.cerilas.navikont.navikont';
         const title = template.title_template || 'Navikont Bildirim';
         const body = template.body_template;
         
