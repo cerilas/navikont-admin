@@ -190,8 +190,19 @@ export async function sendNotificationToAll(appId: string, templateId: string, s
         try {
           const result = await sendPushNotification(deviceTokens, title, body, bundleId);
           console.log(`APNs Batch ${batchId} completed: Sent ${result.sent}, Failed ${result.failed}`);
-        } catch (err) {
+          
+          if (result.failed > 0 || result.error) {
+            await db.query(
+              `UPDATE patient_notifications SET status = 'failed', metadata = jsonb_set(metadata, '{error}', $1::jsonb) WHERE metadata->>'batch_id' = $2`, 
+              [JSON.stringify(result.failures || result.error), batchId]
+            );
+          }
+        } catch (err: any) {
           console.error(`APNs Batch ${batchId} failed:`, err);
+          await db.query(
+            `UPDATE patient_notifications SET status = 'failed', metadata = jsonb_set(metadata, '{error}', $1::jsonb) WHERE metadata->>'batch_id' = $2`, 
+            [JSON.stringify(err.message || 'Unknown error'), batchId]
+          );
         }
       }
     }
