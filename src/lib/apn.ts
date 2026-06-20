@@ -43,8 +43,10 @@ export async function sendPushNotification(
 
   const notification = new apn.Notification();
   notification.topic = topic;
-  notification.title = title;
-  notification.body = body;
+  notification.alert = {
+    title: title,
+    body: body
+  };
   notification.sound = 'default';
   notification.badge = 1;
 
