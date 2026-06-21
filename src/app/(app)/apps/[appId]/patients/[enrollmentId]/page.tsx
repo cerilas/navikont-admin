@@ -110,7 +110,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
       SELECT cr.condition, cj.name as journey_name
       FROM core_rules cr
       LEFT JOIN content_journeys cj ON cj.id = (cr.condition->>'journeyId')::uuid
-      WHERE cr.app_id = $1 AND cr.rule_type = 'journey_assignment' AND cr.is_active = true
+      WHERE cr.target_id = $1 AND cr.target_type = 'app' AND cr.rule_type = 'journey_assignment' AND cr.is_active = true
       ORDER BY (cr.condition->>'scoreMin')::int ASC NULLS LAST
     `, [appId]);
 
