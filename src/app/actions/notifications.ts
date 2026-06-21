@@ -148,17 +148,32 @@ export async function sendNotificationToAll(appId: string, templateId: string, s
       )
       SELECT 
         gen_random_uuid(),
-        patient_user_id,
-        id,
-        app_id,
+        e.patient_user_id,
+        e.id,
+        e.app_id,
         $1 as channel,
-        $2 as title,
-        $3 as body,
+        REPLACE(
+          REPLACE(
+            REPLACE(COALESCE($2::text, ''), '{{patient_name}}', COALESCE(pu.full_name, 'Hasta')),
+            '{{doctor_name}}', COALESCE(du.full_name, 'Doktorunuz')
+          ),
+          '{{app_name}}', COALESCE(a.name, 'Uygulama')
+        ) as title,
+        REPLACE(
+          REPLACE(
+            REPLACE($3::text, '{{patient_name}}', COALESCE(pu.full_name, 'Hasta')),
+            '{{doctor_name}}', COALESCE(du.full_name, 'Doktorunuz')
+          ),
+          '{{app_name}}', COALESCE(a.name, 'Uygulama')
+        ) as body,
         'sent' as status,
         CURRENT_TIMESTAMP as sent_at,
         jsonb_build_object('template_id', $4::text, 'batch_id', $5::text, 'template_code', $6::text, 'source', $7::text)
-      FROM patient_app_enrollments
-      WHERE app_id = $8 AND status = 'active'
+      FROM patient_app_enrollments e
+      LEFT JOIN core_users pu ON pu.id = e.patient_user_id
+      LEFT JOIN core_users du ON du.id = e.doctor_user_id
+      LEFT JOIN content_apps a ON a.id = e.app_id
+      WHERE e.app_id = $8 AND e.status = 'active'
     `, [
       template.channel,
       template.title_template || null,
@@ -173,35 +188,79 @@ export async function sendNotificationToAll(appId: string, templateId: string, s
     // 3. APNs Push Notification Send
     if (template.channel === 'push') {
       const tokensRes = await db.query(`
-        SELECT d.device_token 
+        SELECT 
+          d.device_token,
+          pu.full_name as patient_name,
+          du.full_name as doctor_name,
+          a.name as app_name
         FROM patient_devices d
         JOIN patient_app_enrollments e ON e.patient_user_id = d.patient_user_id
+        LEFT JOIN core_users pu ON pu.id = e.patient_user_id
+        LEFT JOIN core_users du ON du.id = e.doctor_user_id
+        LEFT JOIN content_apps a ON a.id = e.app_id
         WHERE e.app_id = $1 AND e.status = 'active' AND d.platform = 'ios'
       `, [appId]);
 
-      const deviceTokens = tokensRes.rows.map(r => r.device_token).filter(Boolean);
-      
-      if (deviceTokens.length > 0) {
-        // We need the bundle ID. Assume it's in .env or hardcoded for now: com.cerilas.navikont.navikont
+      if (tokensRes.rows.length > 0) {
         const bundleId = process.env.APN_BUNDLE_ID || 'com.cerilas.navikont.navikont';
-        const title = template.title_template || 'Navikont Bildirim';
-        const body = template.body_template;
-        
-        try {
-          // DEBUG
-          await db.query(`INSERT INTO temp_apn_logs (log_text) VALUES ($1)`, [
-            `Env check: KEY=${!!process.env.APN_KEY}, KEY_ID=${!!process.env.APN_KEY_ID}, TEAM_ID=${!!process.env.APN_TEAM_ID}, USE_SANDBOX=${process.env.APN_USE_SANDBOX}, BUNDLE=${bundleId}`
-          ]);
+        const baseTitle = template.title_template || 'Navikont Bildirim';
+        const baseBody = template.body_template;
 
-          const result = await sendPushNotification(deviceTokens, title, body, bundleId);
-          console.log(`APNs Batch ${batchId} completed: Sent ${result.sent}, Failed ${result.failed}`);
+        // DEBUG check
+        await db.query(`INSERT INTO temp_apn_logs (log_text) VALUES ($1)`, [
+          `Env check: KEY=${!!process.env.APN_KEY}, KEY_ID=${!!process.env.APN_KEY_ID}, TEAM_ID=${!!process.env.APN_TEAM_ID}, USE_SANDBOX=${process.env.APN_USE_SANDBOX}, BUNDLE=${bundleId}`
+        ]);
+
+        // Group tokens by customized payload content
+        const payloadGroups = new Map<string, { title: string, body: string, tokens: string[] }>();
+
+        for (const row of tokensRes.rows) {
+          if (!row.device_token) continue;
+          const pName = row.patient_name || 'Hasta';
+          const dName = row.doctor_name || 'Doktorunuz';
+          const aName = row.app_name || 'Uygulama';
+
+          const personalizedTitle = baseTitle
+            .replace(/\{\{patient_name\}\}/g, pName)
+            .replace(/\{\{doctor_name\}\}/g, dName)
+            .replace(/\{\{app_name\}\}/g, aName);
+
+          const personalizedBody = baseBody
+            .replace(/\{\{patient_name\}\}/g, pName)
+            .replace(/\{\{doctor_name\}\}/g, dName)
+            .replace(/\{\{app_name\}\}/g, aName);
+
+          const groupKey = `${personalizedTitle}|||${personalizedBody}`;
+          if (!payloadGroups.has(groupKey)) {
+            payloadGroups.set(groupKey, { title: personalizedTitle, body: personalizedBody, tokens: [] });
+          }
+          payloadGroups.get(groupKey)!.tokens.push(row.device_token);
+        }
+
+        let totalSent = 0;
+        let totalFailed = 0;
+        let allFailures: any[] = [];
+
+        try {
+          for (const group of payloadGroups.values()) {
+            const result = await sendPushNotification(group.tokens, group.title, group.body, bundleId);
+            totalSent += result.sent;
+            totalFailed += result.failed;
+            if (result.failures && result.failures.length > 0) {
+              allFailures = allFailures.concat(result.failures);
+            } else if (result.error) {
+              allFailures.push(result.error);
+            }
+          }
+
+          console.log(`APNs Batch ${batchId} completed: Sent ${totalSent}, Failed ${totalFailed}`);
           
-          if (result.failed > 0 || result.error) {
+          if (totalFailed > 0 || allFailures.length > 0) {
             let errorText = '';
             try {
-              errorText = JSON.stringify(result.failures || result.error);
+              errorText = JSON.stringify(allFailures);
             } catch(e) {
-              errorText = String(result.failures || result.error);
+              errorText = String(allFailures);
             }
             await db.query(
               `UPDATE patient_notifications SET status = 'failed' WHERE metadata->>'batch_id' = $1`, 
