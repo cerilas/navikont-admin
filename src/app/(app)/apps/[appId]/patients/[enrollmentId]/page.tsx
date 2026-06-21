@@ -109,7 +109,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
     const rulesRes = await db.query(`
       SELECT cr.condition, cj.name as journey_name
       FROM core_rules cr
-      LEFT JOIN content_journeys cj ON cj.id = (cr.condition->>'journeyId')::uuid
+      LEFT JOIN content_journeys cj ON cj.id = (cr.actions->>'journeyId')::uuid
       WHERE cr.target_id = $1 AND cr.target_type = 'app' AND cr.rule_type = 'journey_assignment' AND cr.is_active = true
       ORDER BY (cr.condition->>'scoreMin')::int ASC NULLS LAST
     `, [appId]);
