@@ -187,6 +187,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
                         <span className="visually-hidden">{patient.progress_percent}% Complete</span>
                       </div>
                     </div>
+                  </div>
                 </div>
               </div>
             </div>
