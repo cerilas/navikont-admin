@@ -310,7 +310,9 @@ export async function getNotificationHistory(appId: string, page: number = 1, li
         channel,
         MAX(sent_at) as sent_at,
         COUNT(*) as total_sent,
-        COUNT(read_at) as total_read
+        COUNT(read_at) as total_read,
+        MAX(title) as sample_title,
+        MAX(body) as sample_body
       FROM patient_notifications
       WHERE app_id = $1 AND metadata->>'batch_id' IS NOT NULL
       GROUP BY 

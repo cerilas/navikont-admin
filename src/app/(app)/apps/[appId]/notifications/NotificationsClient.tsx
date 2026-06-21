@@ -30,6 +30,8 @@ interface NotificationHistoryItem {
   sent_at: string;
   total_sent: string | number;
   total_read: string | number;
+  sample_title?: string;
+  sample_body?: string;
 }
 
 interface NotificationsClientProps {
@@ -252,6 +254,28 @@ export default function NotificationsClient({ appId, initialTemplates, initialHi
     }).catch(err => {
       console.error('Failed to copy!', err);
       Swal.fire('Hata', 'URL kopyalanamadı.', 'error');
+    });
+  };
+
+  const handleViewHistoryDetails = (item: NotificationHistoryItem) => {
+    Swal.fire({
+      title: 'Gönderilen Bildirim İçeriği',
+      html: `
+        <div class="text-start p-3 bg-light rounded border mt-3">
+          <div class="mb-2"><strong>Kanal:</strong> ${getChannelLabel(item.channel)}</div>
+          <div class="mb-2"><strong>Şablon Kodu:</strong> ${item.template_code}</div>
+          <div class="mb-2"><strong>Gönderim Zamanı:</strong> ${new Date(item.sent_at).toLocaleString('tr-TR')}</div>
+          <hr/>
+          <div class="mb-2"><strong>Başlık:</strong> <br/> ${item.sample_title || '-'}</div>
+          <div><strong>Gövde (İçerik):</strong> <br/> ${item.sample_body || '-'}</div>
+          <hr/>
+          <div class="small text-muted mt-2">
+            * Not: Yukarıdaki metinler kullanıcılardan birine gönderilen gerçek bir örnektir. Değişkenler hastaya göre uyarlanmış haldedir.
+          </div>
+        </div>
+      `,
+      confirmButtonText: 'Kapat',
+      width: '600px'
     });
   };
 
@@ -497,6 +521,7 @@ export default function NotificationsClient({ appId, initialTemplates, initialHi
                 <th className="text-end">Toplam Gönderilen</th>
                 <th className="text-end">Toplam Okunan</th>
                 <th className="text-end">Okunma Oranı</th>
+                <th className="text-end">İşlemler</th>
               </tr>
             </thead>
             <tbody>
@@ -551,6 +576,11 @@ export default function NotificationsClient({ appId, initialTemplates, initialHi
                             <div className="progress-bar bg-success" style={{ width: `${rate}%` }}></div>
                           </div>
                         </div>
+                      </td>
+                      <td className="text-end">
+                        <button className="btn btn-sm btn-outline-primary" onClick={() => handleViewHistoryDetails(item)}>
+                          İçeriği Gör
+                        </button>
                       </td>
                     </tr>
                   );
