@@ -94,6 +94,41 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
     return `data:image/jpeg;base64,${img}`;
   };
 
+  // If patient has no journey assigned, check for questionnaire score + rules
+  let unassignedInfo: any = null;
+  if (!patient.journey_id) {
+    const lastResponse = await db.query(`
+      SELECT pqr.total_score, pqr.risk_level, pqr.submitted_at,
+             fqv.title as questionnaire_title
+      FROM patient_questionnaire_responses pqr
+      JOIN forms_questionnaire_versions fqv ON fqv.id = pqr.questionnaire_version_id
+      WHERE pqr.enrollment_id = $1 AND pqr.patient_user_id = $2
+      ORDER BY pqr.submitted_at DESC LIMIT 1
+    `, [enrollmentId, patient.user_id]);
+
+    const rulesRes = await db.query(`
+      SELECT cr.condition, cj.name as journey_name
+      FROM core_rules cr
+      LEFT JOIN content_journeys cj ON cj.id = (cr.condition->>'journeyId')::uuid
+      WHERE cr.app_id = $1 AND cr.rule_type = 'journey_assignment' AND cr.is_active = true
+      ORDER BY (cr.condition->>'scoreMin')::int ASC NULLS LAST
+    `, [appId]);
+
+    if (lastResponse.rows.length > 0) {
+      unassignedInfo = {
+        score: lastResponse.rows[0].total_score,
+        riskLevel: lastResponse.rows[0].risk_level,
+        submittedAt: lastResponse.rows[0].submitted_at,
+        questionnaireName: lastResponse.rows[0].questionnaire_title,
+        rules: rulesRes.rows.map((r: any) => ({
+          scoreMin: r.condition?.scoreMin ?? null,
+          scoreMax: r.condition?.scoreMax ?? null,
+          journeyName: r.journey_name || 'Bilinmeyen Akış',
+        })),
+      };
+    }
+  }
+
   return (
     <>
       <div className="page-header d-print-none mt-4 mb-4">
@@ -152,14 +187,13 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
                         <span className="visually-hidden">{patient.progress_percent}% Complete</span>
                       </div>
                     </div>
-                  </div>
                 </div>
               </div>
             </div>
 
             {/* Right Main Content */}
             <div className="col-lg-9">
-              <PatientDetailClient patient={patient} journeys={journeys} doctors={doctors} progressLogs={progressLogs} />
+              <PatientDetailClient patient={patient} journeys={journeys} doctors={doctors} progressLogs={progressLogs} unassignedInfo={unassignedInfo} />
             </div>
 
           </div>

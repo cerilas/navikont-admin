@@ -7,7 +7,7 @@ import { sendPasswordResetEmail, sendPasswordResetSMS } from '@/app/actions/auth
 import EditPatientModal from './EditPatientModal';
 import Swal from 'sweetalert2';
 
-export default function PatientDetailClient({ patient, journeys, doctors = [], progressLogs = [] }: { patient: any, journeys: any[], doctors?: any[], progressLogs?: any[] }) {
+export default function PatientDetailClient({ patient, journeys, doctors = [], progressLogs = [], unassignedInfo = null }: { patient: any, journeys: any[], doctors?: any[], progressLogs?: any[], unassignedInfo?: any }) {
   const params = useParams();
   const appId = params.appId as string;
   const [activeTab, setActiveTab] = useState('overview');
@@ -258,6 +258,57 @@ export default function PatientDetailClient({ patient, journeys, doctors = [], p
         <div className="card-body">
           {activeTab === 'overview' && (
             <div className="row g-4">
+              {unassignedInfo && (
+                <div className="col-12">
+                  <div className="alert alert-warning" style={{ borderLeft: '4px solid #f59e0b', background: '#fffbeb' }}>
+                    <div className="d-flex align-items-start gap-3">
+                      <div className="flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4"></path><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.875h16.214a1.914 1.914 0 0 0 1.636 -2.875l-8.106 -13.534a1.914 1.914 0 0 0 -3.274 0z"></path><path d="M12 16h.01"></path></svg>
+                      </div>
+                      <div className="flex-grow-1">
+                        <h4 className="alert-title mb-2" style={{ color: '#92400e' }}>Koşullu Atama Eşleşmedi</h4>
+                        <p className="mb-2" style={{ color: '#78350f' }}>
+                          Hasta <strong>&quot;{unassignedInfo.questionnaireName}&quot;</strong> anketinden <span className="badge bg-danger-lt fs-5 px-2 py-1 mx-1" style={{ fontSize: '1rem' }}>{unassignedInfo.score} puan</span> aldı. Bu puan mevcut atama kurallarının hiçbirine uymuyor.
+                        </p>
+                        {unassignedInfo.rules && unassignedInfo.rules.length > 0 && (
+                          <div className="mt-3">
+                            <div className="fw-semibold mb-2" style={{ color: '#92400e' }}>Mevcut Atama Kuralları:</div>
+                            <table className="table table-sm table-bordered mb-0" style={{ maxWidth: '500px', background: 'white' }}>
+                              <thead>
+                                <tr style={{ background: '#fef3c7' }}>
+                                  <th style={{ color: '#92400e' }}>Puan Aralığı</th>
+                                  <th style={{ color: '#92400e' }}>Atanan Akış</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {unassignedInfo.rules.map((rule: any, i: number) => (
+                                  <tr key={i}>
+                                    <td><code>{rule.scoreMin ?? '∞'} - {rule.scoreMax ?? '∞'}</code></td>
+                                    <td>{rule.journeyName}</td>
+                                  </tr>
+                                ))}
+                                <tr style={{ background: '#fef2f2' }}>
+                                  <td><code className="text-danger">{unassignedInfo.score} puan</code></td>
+                                  <td className="text-danger fw-semibold">❌ Eşleşme Yok</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        <div className="mt-3 d-flex gap-2 align-items-center">
+                          <span className="text-muted" style={{ fontSize: '0.85rem' }}>
+                            Anket tarihi: {new Date(unassignedInfo.submittedAt).toLocaleString('tr-TR')}
+                          </span>
+                          <span className="text-muted">•</span>
+                          <span className="text-muted" style={{ fontSize: '0.85rem' }}>
+                            Lütfen hastayı manuel olarak bir akışa atayın veya puan aralığını güncelleyin.
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="col-md-6">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h3 className="card-title m-0">Hasta Bilgileri</h3>
