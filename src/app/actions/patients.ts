@@ -193,6 +193,9 @@ export async function resetPatientProgress(enrollmentId: string) {
       // ignore if table doesn't exist
     }
 
+    // Delete questionnaire responses
+    await db.query('DELETE FROM patient_questionnaire_responses WHERE enrollment_id = $1', [enrollmentId]);
+
     // Reset current day and dates
     await db.query(`
       UPDATE patient_app_enrollments 
