@@ -1,6 +1,8 @@
 import { query } from '@/lib/db';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 const LANG_LABELS: Record<string, { label: string; flag: string }> = {
   tr: { label: 'Türkçe', flag: '🇹🇷' },
   en: { label: 'İngilizce', flag: '🇬🇧' },
@@ -13,8 +15,11 @@ export default async function AppsPage() {
   try {
     const res = await query(`
       SELECT 
-        a.*,
+        a.id, a.name, a.slug, a.status, a.icon_emoji, a.motto, a.disease_id,
+        a.default_duration_days, a.deleted_at,
         d.name as disease_name,
+        to_json(COALESCE(a.supported_languages, ARRAY['tr']::text[])) as supported_languages,
+        to_json(COALESCE(a.supported_platforms, ARRAY[]::text[])) as supported_platforms,
         (SELECT COUNT(*) FROM patient_app_enrollments WHERE app_id = a.id) as patient_count,
         (SELECT COUNT(*) FROM patient_app_enrollments WHERE app_id = a.id AND status = 'active') as active_patient_count,
         (SELECT COUNT(DISTINCT doctor_user_id) FROM patient_app_enrollments WHERE app_id = a.id AND doctor_user_id IS NOT NULL) as doctor_count,
