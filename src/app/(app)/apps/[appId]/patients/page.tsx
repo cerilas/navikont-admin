@@ -4,6 +4,7 @@ import InvitePatientForm from './InvitePatientForm';
 import { getBaseUrl } from '@/lib/url';
 import PatientsSearch from './PatientsSearch';
 import Pagination from './Pagination';
+import { getDoctors } from '@/app/actions/doctors';
 
 export default async function PatientsPage({ 
   params,
@@ -39,6 +40,9 @@ export default async function PatientsPage({
     LIMIT 1
   `, [appId]);
   const hasConditionalAssignment = rulesRes.rows.length > 0;
+
+  // 2.6 Fetch doctors for assignment
+  const doctors = await getDoctors();
 
   // 3. Count total patients for pagination
   let countQuery = `
@@ -123,7 +127,7 @@ export default async function PatientsPage({
             </div>
             <div className="col-auto ms-auto d-print-none">
               <div className="btn-list">
-                <InvitePatientForm appId={appId} journeys={journeys} />
+                <InvitePatientForm appId={appId} journeys={journeys} doctors={doctors} />
               </div>
             </div>
           </div>

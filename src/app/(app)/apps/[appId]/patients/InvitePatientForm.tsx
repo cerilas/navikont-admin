@@ -14,8 +14,9 @@ function SubmitButton() {
   );
 }
 
-export default function InvitePatientForm({ appId, journeys }: { appId: string, journeys: any[] }) {
+export default function InvitePatientForm({ appId, journeys, doctors = [] }: { appId: string, journeys: any[], doctors?: any[] }) {
   const [selectedJourney, setSelectedJourney] = useState<string>('');
+  const [selectedDoctor, setSelectedDoctor] = useState<string>('');
   const [state, formAction] = useActionState(async (prevState: any, formData: FormData) => {
     const res = await invitePatientToApp(prevState, formData);
     if (res?.success) {
@@ -53,6 +54,22 @@ export default function InvitePatientForm({ appId, journeys }: { appId: string, 
                 <label className="form-label required">E-posta Adresi</label>
                 <input type="email" className="form-control" name="email" required placeholder="hasta@ornek.com" />
                 <small className="form-hint">Eğer hastanın platformda hesabı yoksa, bu mail adresiyle otomatik hesap oluşturulur.</small>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label">Sorumlu Doktor</label>
+                <select 
+                  className="form-select" 
+                  name="doctorId" 
+                  value={selectedDoctor}
+                  onChange={(e) => setSelectedDoctor(e.target.value)}
+                >
+                  <option value="">-- Doktor Atanmasın --</option>
+                  {doctors.map(d => (
+                    <option key={d.id} value={d.id}>{d.full_name} ({d.email})</option>
+                  ))}
+                </select>
+                <small className="form-hint mt-1">İsterseniz hastaya özel bir doktor atayabilirsiniz.</small>
               </div>
 
               <div className="mb-3">

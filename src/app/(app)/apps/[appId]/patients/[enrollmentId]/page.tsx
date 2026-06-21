@@ -2,6 +2,7 @@ import db from '@/lib/db';
 import Link from 'next/link';
 import PatientDetailClient from './PatientDetailClient';
 import { getBaseUrl } from '@/lib/url';
+import { getDoctors } from '@/app/actions/doctors';
 
 export default async function PatientDetailPage({ params }: { params: Promise<{ appId: string, enrollmentId: string }> }) {
   const { appId, enrollmentId } = await params;
@@ -15,12 +16,14 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
       e.progress_percent,
       e.current_day,
       e.journey_id,
+      e.doctor_user_id,
       u.full_name,
       u.email,
       u.phone,
       u.profile_image,
       u.id as user_id,
       j.name as journey_name,
+      d.full_name as doctor_name,
       p.birth_date,
       p.gender,
       p.height_cm,
@@ -30,6 +33,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
     JOIN core_users u ON e.patient_user_id = u.id
     LEFT JOIN content_journeys j ON e.journey_id = j.id
     LEFT JOIN patient_profiles p ON p.user_id = u.id
+    LEFT JOIN core_users d ON e.doctor_user_id = d.id
     WHERE e.id = $1 AND e.app_id = $2
   `, [enrollmentId, appId]);
 
@@ -37,6 +41,8 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
 
   const journeysRes = await db.query('SELECT id, name, is_default FROM content_journeys WHERE app_id = $1 AND deleted_at IS NULL ORDER BY name ASC', [appId]);
   const journeys = journeysRes.rows;
+
+  const doctors = await getDoctors();
 
   if (!patient) {
     return (
@@ -152,7 +158,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
 
             {/* Right Main Content */}
             <div className="col-lg-9">
-              <PatientDetailClient patient={patient} journeys={journeys} progressLogs={progressLogs} />
+              <PatientDetailClient patient={patient} journeys={journeys} doctors={doctors} progressLogs={progressLogs} />
             </div>
 
           </div>

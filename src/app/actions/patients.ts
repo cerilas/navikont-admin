@@ -6,9 +6,10 @@ import bcrypt from 'bcryptjs';
 
 export async function invitePatientToApp(prevState: any, formData: FormData) {
   const appId = formData.get('appId')?.toString();
-  const journeyId = formData.get('journeyId')?.toString();
-  const fullName = formData.get('fullName')?.toString();
-  const email = formData.get('email')?.toString();
+  const fullName = formData.get('fullName') as string;
+  const email = formData.get('email') as string;
+  const journeyId = formData.get('journeyId') as string;
+  const doctorId = formData.get('doctorId') as string;
 
   if (!appId || !fullName || !email) {
     return { error: 'Lütfen zorunlu alanları doldurun (Ad Soyad, E-posta).' };
@@ -57,9 +58,9 @@ export async function invitePatientToApp(prevState: any, formData: FormData) {
     const enrollmentId = crypto.randomUUID();
     await db.query(`
       INSERT INTO patient_app_enrollments 
-      (id, patient_user_id, app_id, app_version_id, journey_id, status, start_date)
-      VALUES ($1, $2, $3, $4, $5, 'invited', CURRENT_DATE)
-    `, [enrollmentId, patientUserId, appId, appVersionId, journeyId || null]);
+      (id, patient_user_id, app_id, app_version_id, journey_id, doctor_user_id, status, start_date)
+      VALUES ($1, $2, $3, $4, $5, $6, 'invited', CURRENT_DATE)
+    `, [enrollmentId, patientUserId, appId, appVersionId, journeyId || null, doctorId || null]);
 
     return { success: true, message: 'Hasta başarıyla davet edildi.' };
   } catch (err: any) {
@@ -75,6 +76,16 @@ export async function updateEnrollmentStatus(enrollmentId: string, status: strin
   } catch (err: any) {
     console.error('Error updating status:', err);
     return { error: 'Durum güncellenirken bir hata oluştu.' };
+  }
+}
+
+export async function assignDoctorToPatient(enrollmentId: string, doctorId: string | null) {
+  try {
+    await db.query(`UPDATE patient_app_enrollments SET doctor_user_id = $1, updated_at = NOW() WHERE id = $2`, [doctorId || null, enrollmentId]);
+    return { success: true, message: 'Doktor ataması başarıyla güncellendi.' };
+  } catch (err: any) {
+    console.error('Error assigning doctor:', err);
+    return { error: 'Doktor ataması güncellenirken bir hata oluştu.' };
   }
 }
 

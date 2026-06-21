@@ -2,12 +2,12 @@
 
 import { useState, useTransition } from 'react';
 import { useParams } from 'next/navigation';
-import { updateEnrollmentStatus, deletePatientEnrollment, getDetailedModuleAnswers, resetPatientProgress } from '@/app/actions/patients';
+import { updateEnrollmentStatus, deletePatientEnrollment, getDetailedModuleAnswers, resetPatientProgress, assignDoctorToPatient } from '@/app/actions/patients';
 import { sendPasswordResetEmail, sendPasswordResetSMS } from '@/app/actions/auth';
 import EditPatientModal from './EditPatientModal';
 import Swal from 'sweetalert2';
 
-export default function PatientDetailClient({ patient, journeys, progressLogs = [] }: { patient: any, journeys: any[], progressLogs?: any[] }) {
+export default function PatientDetailClient({ patient, journeys, doctors = [], progressLogs = [] }: { patient: any, journeys: any[], doctors?: any[], progressLogs?: any[] }) {
   const params = useParams();
   const appId = params.appId as string;
   const [activeTab, setActiveTab] = useState('overview');
@@ -180,6 +180,49 @@ export default function PatientDetailClient({ patient, journeys, progressLogs = 
     });
   };
 
+  const handleChangeDoctor = () => {
+    let doctorOptions = `<option value="">-- Doktor Atanmasın --</option>`;
+    doctors.forEach(d => {
+      const selected = d.id === patient.doctor_user_id ? 'selected' : '';
+      doctorOptions += `<option value="${d.id}" ${selected}>${d.full_name} (${d.email})</option>`;
+    });
+
+    Swal.fire({
+      title: 'Doktor Ata / Değiştir',
+      html: `
+        <div class="text-start mt-3">
+          <label class="form-label">Sorumlu Doktor Seçin:</label>
+          <select id="doctorSelect" class="form-select">
+            ${doctorOptions}
+          </select>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Kaydet',
+      cancelButtonText: 'İptal',
+      showLoaderOnConfirm: true,
+      preConfirm: async () => {
+        const selectEl = document.getElementById('doctorSelect') as HTMLSelectElement;
+        const newDoctorId = selectEl.value || null;
+        
+        if (newDoctorId === patient.doctor_user_id) return true; // no change
+        
+        const res = await assignDoctorToPatient(patient.enrollment_id, newDoctorId);
+        if (res?.error) {
+          Swal.showValidationMessage(res.error);
+        }
+        return res;
+      },
+      allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+      if (result.isConfirmed && result.value?.success) {
+        Swal.fire('Başarılı!', result.value.message, 'success').then(() => {
+          window.location.reload();
+        });
+      }
+    });
+  };
+
   return (
     <>
       <div className="card">
@@ -238,6 +281,21 @@ export default function PatientDetailClient({ patient, journeys, progressLogs = 
                 <div className="mb-3">
                   <div className="text-muted mb-1">Atanan Akış (Journey)</div>
                   <div>{patient.journey_name || 'Belirtilmemiş'}</div>
+                </div>
+                <div className="mb-3">
+                  <div className="text-muted mb-1 d-flex align-items-center justify-content-between">
+                    <span>Sorumlu Doktor</span>
+                    <button onClick={handleChangeDoctor} className="btn btn-sm btn-link py-0 text-primary text-decoration-none">
+                      Değiştir
+                    </button>
+                  </div>
+                  <div>
+                    {patient.doctor_name ? (
+                      <span className="badge bg-blue-lt text-blue fs-6 px-2 py-1">{patient.doctor_name}</span>
+                    ) : (
+                      <span className="text-secondary fst-italic">Doktor atanmamış</span>
+                    )}
+                  </div>
                 </div>
                 <div className="mb-3">
                   <div className="text-muted mb-1">Telefon Numarası</div>
