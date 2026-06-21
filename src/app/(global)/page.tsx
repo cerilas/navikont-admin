@@ -55,6 +55,29 @@ export default async function AppSelectionPage() {
         </div>
       </div>
 
+      <style dangerouslySetInnerHTML={{__html: `
+        .app-card {
+          transition: all 0.2s ease-in-out;
+          border-top: 3px solid transparent;
+        }
+        .app-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        }
+        .app-card.status-published { border-top-color: #2fb344; }
+        .app-card.status-draft { border-top-color: #f59f00; }
+        .stat-box {
+          background: #f8f9fa;
+          border-radius: 8px;
+          padding: 10px;
+          text-align: center;
+          height: 100%;
+          border: 1px solid #f1f3f5;
+        }
+        .stat-value { font-size: 1.25rem; font-weight: 700; line-height: 1.2; margin-bottom: 2px; }
+        .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c7a89; font-weight: 600; }
+      `}} />
+
       <div className="page-body">
         <div className="container-xl">
           <div className="row row-cards mt-3">
@@ -85,148 +108,112 @@ export default async function AppSelectionPage() {
             ) : (
               apps.map(app => (
                 <div className="col-md-6 col-lg-4" key={app.id}>
-                  <div className="card">
-                    <div className="card-body">
-                      <div className="row align-items-center">
-                        <div className="col">
-                          <h3 className="card-title mb-1">
-                            <span className="me-2 fs-2">{app.icon_emoji || '📱'}</span>
+                  <div className={`card h-100 app-card status-${app.status}`}>
+                    <div className="card-body d-flex flex-column">
+                      
+                      {/* Header */}
+                      <div className="d-flex align-items-start gap-3 mb-3">
+                        <div style={{ fontSize: '2.5rem', lineHeight: 1 }}>{app.icon_emoji || '📱'}</div>
+                        <div className="flex-fill overflow-hidden">
+                          <h3 className="card-title mb-1 text-truncate">
                             <Link href={`/apps/${app.id}`} className="text-reset">{app.name}</Link>
                           </h3>
-                          {app.motto && (
-                            <div className="text-muted fw-bold mb-1">{app.motto}</div>
-                          )}
-                          <div className="text-muted small mb-2">
+                          <div className="text-muted small">
                             {app.short_description || `Hastalık: ${app.disease_name || 'Belirtilmemiş'}`}
                           </div>
-
-                          {/* App Metrics & Details */}
-                          <div className="mt-3 border-top pt-3">
-                            <div className="row g-3">
-                              {/* Modules & Journeys */}
-                              <div className="col-4">
-                                <div className="text-muted small" style={{ fontSize: '11px', fontWeight: 600 }}>İçerik Sayıları</div>
-                                <div className="mt-1 d-flex flex-column gap-1">
-                                  <span>
-                                    <span className="badge bg-blue-lt me-1">{app.module_count || 0}</span> 
-                                    <span className="text-muted small">Modül</span>
-                                  </span>
-                                  <span>
-                                    <span className="badge bg-purple-lt me-1">{app.journey_count || 0}</span> 
-                                    <span className="text-muted small">Akış</span>
-                                  </span>
-                                </div>
-                              </div>
-                              
-                              {/* Patients & Doctors */}
-                              <div className="col-4">
-                                <div className="text-muted small" style={{ fontSize: '11px', fontWeight: 600 }}>Kullanıcılar</div>
-                                <div className="mt-1 d-flex flex-column gap-1">
-                                  <span>
-                                    <span className="badge bg-green-lt me-1">{app.active_patient_count || 0} / {app.patient_count || 0}</span> 
-                                    <span className="text-muted small">Hasta</span>
-                                  </span>
-                                  <span>
-                                    <span className="badge bg-orange-lt me-1">{app.doctor_count || 0}</span> 
-                                    <span className="text-muted small">Doktor</span>
-                                  </span>
-                                </div>
-                              </div>
-                              
-                              {/* Sorumlu Hekim */}
-                              <div className="col-4">
-                                <div className="text-muted small" style={{ fontSize: '11px', fontWeight: 600 }}>Sorumlu Hekim</div>
-                                <div className="mt-1 fw-medium text-dark text-truncate" style={{ fontSize: '13px' }} title={app.medical_director_name || 'Atanmamış'}>
-                                  {app.medical_director_name || <span className="text-muted small italic">Atanmamış</span>}
-                                </div>
-                              </div>
-
-                              {/* Platformlar */}
-                              {app.supported_platforms && Array.isArray(app.supported_platforms) && app.supported_platforms.length > 0 && (
-                                <div className="col-12 mt-2 pt-2 border-top-0">
-                                  <div className="text-muted small mb-1" style={{ fontSize: '11px', fontWeight: 600 }}>Desteklenen Platformlar</div>
-                                  <div className="d-flex gap-2 align-items-center flex-wrap">
-                                    {app.supported_platforms.map((plat: string) => {
-                                      const label = plat === 'ios' ? 'iOS' : plat === 'android' ? 'Android' : plat === 'huawei' ? 'Huawei' : plat === 'web' ? 'Web' : plat;
-                                      
-                                      let logoSrc = '';
-                                      if (plat === 'ios') {
-                                        logoSrc = '/platform-logolar/2.png';
-                                      } else if (plat === 'android') {
-                                        logoSrc = '/platform-logolar/3.png';
-                                      } else if (plat === 'huawei') {
-                                        logoSrc = '/platform-logolar/1.png';
-                                      }
-
-                                      if (logoSrc) {
-                                        return (
-                                          <img 
-                                            key={plat} 
-                                            src={logoSrc} 
-                                            alt={label} 
-                                            title={label} 
-                                            className="rounded border p-1 bg-white" 
-                                            style={{ width: '28px', height: '28px', objectFit: 'contain' }} 
-                                          />
-                                        );
-                                      }
-
-                                      return (
-                                        <span 
-                                          key={plat} 
-                                          title={label}
-                                          className="rounded border p-1 bg-white d-inline-flex align-items-center justify-content-center text-muted"
-                                          style={{ width: '28px', height: '28px' }}
-                                        >
-                                          <IconWorld size={16} />
-                                        </span>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Diller */}
-                          {app.supported_languages && Array.isArray(app.supported_languages) && app.supported_languages.length > 0 && (
-                            <div className="mt-3 border-top pt-3">
-                              <div className="text-muted small mb-2" style={{ fontSize: '11px', fontWeight: 600 }}>Desteklenen Diller</div>
-                              <div className="d-flex align-items-center gap-1 flex-wrap">
-                                {app.supported_languages.map((lang: string) => {
-                                  const info = LANG_LABELS[lang];
-                                  return info ? (
-                                    <span key={lang} className="badge bg-light text-dark border" title={info.label}>
-                                      {info.flag} {info.label}
-                                    </span>
-                                  ) : (
-                                    <span key={lang} className="badge bg-light text-dark border">{lang}</span>
-                                  );
-                                })}
-                              </div>
-                            </div>
+                          {app.motto && (
+                            <div className="text-secondary small mt-1 fst-italic text-truncate">&ldquo;{app.motto}&rdquo;</div>
                           )}
+                        </div>
+                      </div>
 
-                          <div className="mt-3">
-                            <div className="row g-2 align-items-center">
-                              <div className="col-auto">
-                                {app.status === 'published' ? (
-                                  <span className="status status-green">Yayında</span>
-                                ) : (
-                                  <span className="status status-orange">Taslak</span>
-                                )}
-                              </div>
-                            </div>
+                      {/* Flex spacer to push metrics to bottom */}
+                      <div className="flex-grow-1"></div>
+
+                      {/* Stats Grid */}
+                      <div className="row g-2 mt-3">
+                        <div className="col-4">
+                          <div className="stat-box" style={{ backgroundColor: '#f0f9ff', borderColor: '#e0f2fe' }}>
+                            <div className="stat-value text-primary">{app.patient_count || 0}</div>
+                            <div className="stat-label">Hasta</div>
+                            {app.active_patient_count > 0 && <div style={{fontSize: '10px', color: '#0ea5e9'}}>{app.active_patient_count} aktif</div>}
+                          </div>
+                        </div>
+                        <div className="col-4">
+                          <div className="stat-box" style={{ backgroundColor: '#fdf4ff', borderColor: '#fae8ff' }}>
+                            <div className="stat-value text-purple">{app.doctor_count || 0}</div>
+                            <div className="stat-label">Doktor</div>
+                          </div>
+                        </div>
+                        <div className="col-4">
+                          <div className="stat-box" style={{ backgroundColor: '#f0fdf4', borderColor: '#dcfce7' }}>
+                            <div className="stat-value text-success">{app.module_count || 0}</div>
+                            <div className="stat-label">Modül</div>
+                            {app.journey_count > 0 && <div style={{fontSize: '10px', color: '#22c55e'}}>{app.journey_count} akış</div>}
                           </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="card-footer">
-                      <div className="d-flex">
-                        <Link href={`/apps/${app.id}`} className="btn btn-primary ms-auto">
-                          Yönet
-                        </Link>
+
+                      {/* Sorumlu Hekim & Durum */}
+                      <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                        <div>
+                          <div className="text-muted" style={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: 600 }}>Sorumlu Hekim</div>
+                          <div className="text-dark small fw-medium text-truncate" style={{ maxWidth: '140px' }} title={app.medical_director_name || 'Atanmamış'}>
+                            {app.medical_director_name || <span className="text-muted italic">Atanmamış</span>}
+                          </div>
+                        </div>
+                        <div>
+                          {app.status === 'published' ? (
+                            <span className="badge bg-green-lt">Yayında</span>
+                          ) : (
+                            <span className="badge bg-orange-lt">Taslak</span>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Platforms & Languages */}
+                      <div className="d-flex justify-content-between align-items-center mt-3">
+                        
+                        {/* Languages */}
+                        <div className="d-flex gap-1">
+                          {app.supported_languages && Array.isArray(app.supported_languages) && app.supported_languages.map((lang: string) => {
+                            const info = LANG_LABELS[lang];
+                            return info ? (
+                              <span key={lang} className="badge bg-light text-dark border p-1" title={info.label} style={{ fontSize: '1.1rem', lineHeight: 1 }}>
+                                {info.flag}
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
+
+                        {/* Platforms */}
+                        <div className="d-flex gap-1">
+                          {app.supported_platforms && Array.isArray(app.supported_platforms) && app.supported_platforms.map((plat: string) => {
+                            let logoSrc = '';
+                            if (plat === 'ios') logoSrc = '/platform-logolar/2.png';
+                            else if (plat === 'android') logoSrc = '/platform-logolar/3.png';
+                            else if (plat === 'huawei') logoSrc = '/platform-logolar/1.png';
+                            
+                            return logoSrc ? (
+                              <img 
+                                key={plat} 
+                                src={logoSrc} 
+                                alt={plat} 
+                                title={plat} 
+                                className="rounded border bg-white" 
+                                style={{ width: '22px', height: '22px', objectFit: 'contain', padding: '2px' }} 
+                              />
+                            ) : null;
+                          })}
+                        </div>
+
+                      </div>
+                    </div>
+
+                    <div className="card-footer p-2 bg-transparent border-top-0">
+                      <Link href={`/apps/${app.id}`} className="btn btn-primary w-100">
+                        Paneli Aç
+                      </Link>
                     </div>
                   </div>
                 </div>
