@@ -188,6 +188,11 @@ export async function sendNotificationToAll(appId: string, templateId: string, s
         const body = template.body_template;
         
         try {
+          // DEBUG
+          await db.query(`INSERT INTO temp_apn_logs (log_text) VALUES ($1)`, [
+            `Env check: KEY=${!!process.env.APN_KEY}, KEY_ID=${!!process.env.APN_KEY_ID}, TEAM_ID=${!!process.env.APN_TEAM_ID}, USE_SANDBOX=${process.env.APN_USE_SANDBOX}, BUNDLE=${bundleId}`
+          ]);
+
           const result = await sendPushNotification(deviceTokens, title, body, bundleId);
           console.log(`APNs Batch ${batchId} completed: Sent ${result.sent}, Failed ${result.failed}`);
           

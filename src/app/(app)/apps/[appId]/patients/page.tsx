@@ -1,6 +1,7 @@
 import db from '@/lib/db';
 import Link from 'next/link';
 import InvitePatientForm from './InvitePatientForm';
+import { getBaseUrl } from '@/lib/url';
 import PatientsSearch from './PatientsSearch';
 import Pagination from './Pagination';
 
@@ -101,7 +102,7 @@ export default async function PatientsPage({
     if (!img) return null;
     if (img.startsWith('http')) return img;
     if (img.startsWith('data:')) return img;
-    if (img.startsWith('/uploads/')) return `${process.env.APP_BASE_URL || 'http://localhost:3000'}${img}`;
+    if (img.startsWith('/uploads/')) return `${getBaseUrl()}${img}`;
     if (img.startsWith('/9j/')) return `data:image/jpeg;base64,${img}`;
     if (img.startsWith('iVBORw0KGgo')) return `data:image/png;base64,${img}`;
     return `data:image/jpeg;base64,${img}`;

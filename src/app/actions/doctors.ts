@@ -3,6 +3,7 @@
 import db from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { sendMail, getHtmlEmailTemplate } from '@/lib/mail';
+import { getBaseUrl } from '@/lib/url';
 import { sendSms } from '@/lib/sms';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
@@ -50,7 +51,8 @@ export async function createDoctor(prevState: any, formData: FormData) {
     `, [id, full_name, email, phone, password_hash, reset_token, reset_token_expires]);
 
     // Send Welcome Email
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${reset_token}`;
+    const baseUrl = getBaseUrl();
+    const resetLink = `${baseUrl}/reset-password?token=${reset_token}`;
     
     // Fetch system app name
     let appName = 'DiGA Base';
@@ -129,7 +131,8 @@ export async function sendPasswordReset(doctorId: string) {
       WHERE id = $3
     `, [reset_token, reset_token_expires, doctorId]);
 
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${reset_token}`;
+    const baseUrl = getBaseUrl();
+    const resetLink = `${baseUrl}/reset-password?token=${reset_token}`;
     
     // Fetch doctor's app or first app name
     let appName = 'DiGA Base';
@@ -186,7 +189,8 @@ export async function sendPasswordResetSMS(doctorId: string) {
       WHERE id = $3
     `, [reset_token, reset_token_expires, doctorId]);
 
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${reset_token}`;
+    const baseUrl = getBaseUrl();
+    const resetLink = `${baseUrl}/reset-password?token=${reset_token}`;
     const displayName = full_name.startsWith('Dr.') ? full_name : `Dr. ${full_name}`;
     
     // Fetch doctor's app or first app name

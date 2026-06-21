@@ -4,6 +4,7 @@ import db from '@/lib/db';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { sendMail, getHtmlEmailTemplate } from '@/lib/mail';
+import { getBaseUrl } from '@/lib/url';
 import { sendSms } from '@/lib/sms';
 import { encrypt } from '@/lib/auth';
 import { cookies } from 'next/headers';
@@ -56,7 +57,7 @@ export async function sendPasswordResetEmail(userId: string, appId?: string) {
     `, [token, expires.toISOString(), userId]);
 
     // Construct reset link
-    const baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     const resetLink = `${baseUrl}/reset-password?token=${token}`;
 
     const htmlContent = getHtmlEmailTemplate(
@@ -132,7 +133,7 @@ export async function sendPasswordResetSMS(userId: string, appId?: string) {
     `, [token, expires.toISOString(), userId]);
 
     // Construct reset link
-    const baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     const resetLink = `${baseUrl}/reset-password?token=${token}`;
 
     const smsContent = `${appName} şifre belirleme linkiniz: ${resetLink}`;
