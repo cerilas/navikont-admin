@@ -9,7 +9,7 @@ export default async function AppSelectionPage() {
     SELECT 
       a.*, 
       to_json(COALESCE(a.supported_languages, ARRAY['tr']::text[])) as supported_languages,
-      to_json(COALESCE(a.supported_platforms, ARRAY[]::text[])) as supported_platforms,
+      COALESCE(a.supported_platforms, '[]'::jsonb) as supported_platforms,
       d.name as disease_name,
       u.full_name as medical_director_name,
       (SELECT COUNT(*) FROM content_modules m WHERE m.app_id = a.id AND m.deleted_at IS NULL) as module_count,

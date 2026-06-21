@@ -19,7 +19,7 @@ export default async function AppsPage() {
         a.default_duration_days, a.deleted_at,
         d.name as disease_name,
         to_json(COALESCE(a.supported_languages, ARRAY['tr']::text[])) as supported_languages,
-        to_json(COALESCE(a.supported_platforms, ARRAY[]::text[])) as supported_platforms,
+        COALESCE(a.supported_platforms, '[]'::jsonb) as supported_platforms,
         (SELECT COUNT(*) FROM patient_app_enrollments WHERE app_id = a.id) as patient_count,
         (SELECT COUNT(*) FROM patient_app_enrollments WHERE app_id = a.id AND status = 'active') as active_patient_count,
         (SELECT COUNT(DISTINCT doctor_user_id) FROM patient_app_enrollments WHERE app_id = a.id AND doctor_user_id IS NOT NULL) as doctor_count,
