@@ -8,6 +8,8 @@ export default async function AppSelectionPage() {
   const appsRes = await db.query(`
     SELECT 
       a.*, 
+      to_json(COALESCE(a.supported_languages, ARRAY['tr']::text[])) as supported_languages,
+      to_json(COALESCE(a.supported_platforms, ARRAY[]::text[])) as supported_platforms,
       d.name as disease_name,
       u.full_name as medical_director_name,
       (SELECT COUNT(*) FROM content_modules m WHERE m.app_id = a.id AND m.deleted_at IS NULL) as module_count,
@@ -18,6 +20,12 @@ export default async function AppSelectionPage() {
     ORDER BY a.created_at DESC
   `);
   const apps = appsRes.rows;
+
+  const LANG_LABELS: Record<string, { label: string; flag: string }> = {
+    tr: { label: 'Türkçe', flag: '🇹🇷' },
+    en: { label: 'İngilizce', flag: '🇬🇧' },
+    de: { label: 'Almanca', flag: '🇩🇪' },
+  };
 
   return (
     <>
@@ -161,6 +169,25 @@ export default async function AppSelectionPage() {
                               )}
                             </div>
                           </div>
+
+                          {/* Diller */}
+                          {app.supported_languages && Array.isArray(app.supported_languages) && app.supported_languages.length > 0 && (
+                            <div className="mt-3 border-top pt-3">
+                              <div className="text-muted small mb-2" style={{ fontSize: '11px', fontWeight: 600 }}>Desteklenen Diller</div>
+                              <div className="d-flex align-items-center gap-1 flex-wrap">
+                                {app.supported_languages.map((lang: string) => {
+                                  const info = LANG_LABELS[lang];
+                                  return info ? (
+                                    <span key={lang} className="badge bg-light text-dark border" title={info.label}>
+                                      {info.flag} {info.label}
+                                    </span>
+                                  ) : (
+                                    <span key={lang} className="badge bg-light text-dark border">{lang}</span>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
 
                           <div className="mt-3">
                             <div className="row g-2 align-items-center">
