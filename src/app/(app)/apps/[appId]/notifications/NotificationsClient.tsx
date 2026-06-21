@@ -353,20 +353,6 @@ export default function NotificationsClient({ appId, initialTemplates, initialHi
                   </button>
                   <button 
                     type="button" 
-                    className={`btn ${selectedChannelFilter === 'sms' ? 'btn-primary' : 'btn-white'}`}
-                    onClick={() => setSelectedChannelFilter('sms')}
-                  >
-                    SMS
-                  </button>
-                  <button 
-                    type="button" 
-                    className={`btn ${selectedChannelFilter === 'email' ? 'btn-primary' : 'btn-white'}`}
-                    onClick={() => setSelectedChannelFilter('email')}
-                  >
-                    E-posta
-                  </button>
-                  <button 
-                    type="button" 
                     className={`btn ${selectedChannelFilter === 'in_app' ? 'btn-primary' : 'btn-white'}`}
                     onClick={() => setSelectedChannelFilter('in_app')}
                   >
@@ -640,13 +626,11 @@ export default function NotificationsClient({ appId, initialTemplates, initialHi
                         required
                       >
                         <option value="push">Push Bildirim</option>
-                        <option value="sms">SMS</option>
-                        <option value="email">E-posta</option>
                         <option value="in_app">Uygulama İçi (In-App)</option>
                       </select>
                     </div>
 
-                    {(formChannel === 'push' || formChannel === 'email') && (
+                    {formChannel === 'push' && (
                       <div className="col-12">
                         <label className="form-label">Başlık Şablonu (Opsiyonel)</label>
                         <input 
