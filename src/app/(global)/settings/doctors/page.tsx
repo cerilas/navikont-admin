@@ -1,10 +1,20 @@
-import { getDoctors } from '@/app/actions/doctors';
+import { getDoctorsPaginated } from '@/app/actions/doctors';
 import Link from 'next/link';
 import CreateDoctorModal from './CreateDoctorModal';
 import EditDoctorModal from './EditDoctorModal';
+import DoctorsSearch from './DoctorsSearch';
+import Pagination from '@/app/(app)/apps/[appId]/patients/Pagination';
 
-export default async function DoctorsPage() {
-  const doctors = await getDoctors();
+export const dynamic = 'force-dynamic';
+
+export default async function DoctorsPage({ searchParams }: { searchParams: Promise<{ page?: string, q?: string }> }) {
+  const resolvedParams = await searchParams;
+  const currentPage = Number(resolvedParams?.page) || 1;
+  const searchQ = resolvedParams?.q || '';
+  const limit = 20;
+
+  const { doctors, totalCount } = await getDoctorsPaginated(currentPage, limit, searchQ);
+  const totalPages = Math.ceil(totalCount / limit);
 
   return (
     <>
@@ -16,7 +26,7 @@ export default async function DoctorsPage() {
                 Doktor Yönetimi
               </h2>
               <div className="text-muted mt-1">
-                {doctors.length} doktor kayıtlı
+                {totalCount} doktor kayıtlı
               </div>
             </div>
             <div className="col-auto ms-auto d-print-none">
@@ -34,7 +44,18 @@ export default async function DoctorsPage() {
       <div className="page-body">
         <div className="container-xl">
           <div className="card mt-3">
-            <div className="table-responsive">
+            <div className="card-header border-bottom-0 pb-0">
+              <div className="d-flex align-items-center">
+                <div className="text-muted">
+                  Toplam {totalCount} kayıttan {(currentPage - 1) * limit + 1} ile {Math.min(currentPage * limit, totalCount)} arası gösteriliyor
+                </div>
+                <div className="ms-auto" style={{ width: '300px' }}>
+                  <DoctorsSearch />
+                </div>
+              </div>
+            </div>
+
+            <div className="table-responsive mt-3">
               <table className="table table-vcenter card-table">
                 <thead>
                   <tr>
@@ -48,10 +69,10 @@ export default async function DoctorsPage() {
                 <tbody>
                   {doctors.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center text-muted">Kayıt bulunamadı.</td>
+                      <td colSpan={5} className="text-center text-muted py-4">Kayıt bulunamadı.</td>
                     </tr>
                   ) : (
-                    doctors.map(d => (
+                    doctors.map((d: any) => (
                       <tr key={d.id}>
                         <td>
                           <div className="d-flex py-1 align-items-center">
@@ -82,6 +103,13 @@ export default async function DoctorsPage() {
                 </tbody>
               </table>
             </div>
+            
+            {totalPages > 1 && (
+              <div className="card-footer d-flex align-items-center">
+                <Pagination totalPages={totalPages} currentPage={currentPage} />
+              </div>
+            )}
+
           </div>
         </div>
       </div>

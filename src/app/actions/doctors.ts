@@ -23,6 +23,49 @@ export async function getDoctors() {
   }
 }
 
+export async function getDoctorsPaginated(page: number = 1, limit: number = 20, search: string = '') {
+  try {
+    const offset = (page - 1) * limit;
+    let queryText = `
+      SELECT id, full_name, email, phone, status, created_at, last_login_at
+      FROM core_users
+      WHERE user_type = 'doctor'
+    `;
+    let countQueryText = `
+      SELECT COUNT(*) as total
+      FROM core_users
+      WHERE user_type = 'doctor'
+    `;
+    const params: any[] = [];
+
+    if (search) {
+      params.push(`%${search}%`);
+      const searchClause = ` AND (full_name ILIKE $1 OR email ILIKE $1) `;
+      queryText += searchClause;
+      countQueryText += searchClause;
+    }
+
+    queryText += ` ORDER BY full_name ASC `;
+    
+    // Add pagination
+    const paginationParamsStart = params.length + 1;
+    queryText += ` LIMIT $${paginationParamsStart} OFFSET $${paginationParamsStart + 1} `;
+    
+    const countRes = await db.query(countQueryText, params);
+    const totalCount = parseInt(countRes.rows[0].total);
+
+    const res = await db.query(queryText, [...params, limit, offset]);
+    
+    return {
+      doctors: res.rows,
+      totalCount
+    };
+  } catch (err: any) {
+    console.error('Error fetching doctors:', err);
+    return { doctors: [], totalCount: 0 };
+  }
+}
+
 export async function createDoctor(prevState: any, formData: FormData) {
   const full_name = formData.get('full_name')?.toString();
   const email = formData.get('email')?.toString();
