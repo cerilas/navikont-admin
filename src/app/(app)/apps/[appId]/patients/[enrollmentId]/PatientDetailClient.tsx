@@ -280,7 +280,15 @@ export default function PatientDetailClient({ patient, journeys, doctors = [], p
                 </div>
                 <div className="mb-3">
                   <div className="text-muted mb-1">Atanan Akış (Journey)</div>
-                  <div>{patient.journey_name || 'Belirtilmemiş'}</div>
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="fw-medium text-dark">{patient.journey_name || 'Koşullu Atama Bekleniyor'}</span>
+                    {patient.metadata?.auto_assigned && (
+                      <span className="badge bg-purple-lt px-2 py-1" title="Bu akış hasta anketi çözünce sistem tarafından otomatik atanmıştır.">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon me-1"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"></path></svg>
+                        Oto-Atandı
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="mb-3">
                   <div className="text-muted mb-1 d-flex align-items-center justify-content-between">

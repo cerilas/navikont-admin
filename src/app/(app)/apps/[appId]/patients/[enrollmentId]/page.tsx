@@ -17,6 +17,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
       e.current_day,
       e.journey_id,
       e.doctor_user_id,
+      e.metadata,
       u.full_name,
       u.email,
       u.phone,

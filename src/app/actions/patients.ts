@@ -127,7 +127,10 @@ export async function updatePatientProfile(prevState: any, formData: FormData) {
     // 2. Update patient_app_enrollments
     await db.query(`
       UPDATE patient_app_enrollments 
-      SET journey_id = $1, start_date = $2, updated_at = NOW() 
+      SET journey_id = $1, 
+          start_date = $2, 
+          updated_at = NOW(),
+          metadata = COALESCE(metadata, '{}'::jsonb) - 'auto_assigned'
       WHERE id = $3
     `, [journeyId, startDate, enrollmentId]);
 
