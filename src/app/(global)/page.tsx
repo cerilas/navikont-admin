@@ -13,7 +13,10 @@ export default async function AppSelectionPage() {
       d.name as disease_name,
       u.full_name as medical_director_name,
       (SELECT COUNT(*) FROM content_modules m WHERE m.app_id = a.id AND m.deleted_at IS NULL) as module_count,
-      (SELECT COUNT(*) FROM content_journeys j WHERE j.app_id = a.id AND j.deleted_at IS NULL) as journey_count
+      (SELECT COUNT(*) FROM content_journeys j WHERE j.app_id = a.id AND j.deleted_at IS NULL) as journey_count,
+      (SELECT COUNT(*) FROM patient_app_enrollments WHERE app_id = a.id) as patient_count,
+      (SELECT COUNT(*) FROM patient_app_enrollments WHERE app_id = a.id AND status = 'active') as active_patient_count,
+      (SELECT COUNT(DISTINCT doctor_user_id) FROM patient_app_enrollments WHERE app_id = a.id AND doctor_user_id IS NOT NULL) as doctor_count
     FROM content_apps a 
     LEFT JOIN medical_diseases d ON a.disease_id = d.id 
     LEFT JOIN core_users u ON a.medical_director_id = u.id
@@ -101,7 +104,7 @@ export default async function AppSelectionPage() {
                           <div className="mt-3 border-top pt-3">
                             <div className="row g-3">
                               {/* Modules & Journeys */}
-                              <div className="col-6">
+                              <div className="col-4">
                                 <div className="text-muted small" style={{ fontSize: '11px', fontWeight: 600 }}>İçerik Sayıları</div>
                                 <div className="mt-1 d-flex flex-column gap-1">
                                   <span>
@@ -115,8 +118,23 @@ export default async function AppSelectionPage() {
                                 </div>
                               </div>
                               
+                              {/* Patients & Doctors */}
+                              <div className="col-4">
+                                <div className="text-muted small" style={{ fontSize: '11px', fontWeight: 600 }}>Kullanıcılar</div>
+                                <div className="mt-1 d-flex flex-column gap-1">
+                                  <span>
+                                    <span className="badge bg-green-lt me-1">{app.active_patient_count || 0} / {app.patient_count || 0}</span> 
+                                    <span className="text-muted small">Hasta</span>
+                                  </span>
+                                  <span>
+                                    <span className="badge bg-orange-lt me-1">{app.doctor_count || 0}</span> 
+                                    <span className="text-muted small">Doktor</span>
+                                  </span>
+                                </div>
+                              </div>
+                              
                               {/* Sorumlu Hekim */}
-                              <div className="col-6">
+                              <div className="col-4">
                                 <div className="text-muted small" style={{ fontSize: '11px', fontWeight: 600 }}>Sorumlu Hekim</div>
                                 <div className="mt-1 fw-medium text-dark text-truncate" style={{ fontSize: '13px' }} title={app.medical_director_name || 'Atanmamış'}>
                                   {app.medical_director_name || <span className="text-muted small italic">Atanmamış</span>}
