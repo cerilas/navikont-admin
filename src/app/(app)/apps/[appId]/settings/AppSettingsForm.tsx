@@ -16,11 +16,11 @@ function SubmitButton() {
 
 export default function AppSettingsForm({ app, diseases = [], doctors = [] }: { app: any, diseases?: any[], doctors?: any[] }) {
   const [platforms, setPlatforms] = useState<string[]>(app.supported_platforms || []);
+  const [languages, setLanguages] = useState<string[]>(app.supported_languages || ['tr']);
 
   const [state, formAction] = useActionState(async (prevState: any, formData: FormData) => {
-    // Inject the JSON string for platforms
     formData.set('supported_platforms', JSON.stringify(platforms));
-    
+    formData.set('supported_languages', JSON.stringify(languages));
     const res = await updateAppBasicInfo(prevState, formData);
     if (res?.success) {
       Swal.fire({
@@ -41,6 +41,21 @@ export default function AppSettingsForm({ app, diseases = [], doctors = [] }: { 
       setPlatforms([...platforms, platform]);
     }
   };
+
+  const handleLanguageToggle = (lang: string) => {
+    if (lang === 'tr') return; // Türkçe zorunlu
+    if (languages.includes(lang)) {
+      setLanguages(languages.filter(l => l !== lang));
+    } else {
+      setLanguages([...languages, lang]);
+    }
+  };
+
+  const LANGS = [
+    { code: 'tr', label: 'Türkçe', flag: '🇹🇷', required: true },
+    { code: 'en', label: 'İngilizce', flag: '🇬🇧', required: false },
+    { code: 'de', label: 'Almanca', flag: '🇩🇪', required: false },
+  ];
 
   return (
     <form className="card" action={formAction}>
@@ -106,6 +121,29 @@ export default function AppSettingsForm({ app, diseases = [], doctors = [] }: { 
         <div className="mb-3">
           <label className="form-label">Detaylı Açıklama</label>
           <textarea className="form-control" name="long_description" rows={6} defaultValue={app.long_description || ''} placeholder="Uygulamanın kapsamlı açıklaması..."></textarea>
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Desteklenen Diller</label>
+          <div className="text-muted small mb-2">Türkçe varsayılan dildir ve kaldırılamaz.</div>
+          <div className="d-flex gap-3 flex-wrap">
+            {LANGS.map(lang => (
+              <label key={lang.code} className={`form-selectgroup-item ${lang.required ? '' : ''}`}>
+                <input
+                  type="checkbox"
+                  className="form-selectgroup-input"
+                  checked={languages.includes(lang.code)}
+                  onChange={() => handleLanguageToggle(lang.code)}
+                  disabled={lang.required}
+                />
+                <span className="form-selectgroup-label d-flex align-items-center gap-2 px-3">
+                  <span style={{ fontSize: '1.2rem' }}>{lang.flag}</span>
+                  <span>{lang.label}</span>
+                  {lang.required && <span className="badge bg-secondary-lt ms-1" style={{ fontSize: '0.65rem' }}>Varsayılan</span>}
+                </span>
+              </label>
+            ))}
+          </div>
         </div>
 
         <div className="mb-3">

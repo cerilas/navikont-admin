@@ -49,6 +49,7 @@ export async function updateAppBasicInfo(prevState: any, formData: FormData) {
   const disease_id = formData.get('disease_id')?.toString();
   const medical_director_id = formData.get('medical_director_id')?.toString();
   const supported_platforms_str = formData.get('supported_platforms')?.toString();
+  const supported_languages_str = formData.get('supported_languages')?.toString();
   const status = formData.get('status')?.toString();
 
   if (!appId || !name) {
@@ -68,8 +69,9 @@ export async function updateAppBasicInfo(prevState: any, formData: FormData) {
         medical_director_id = $7,
         supported_platforms = $8,
         status = $9,
+        supported_languages = $10,
         updated_at = NOW()
-      WHERE id = $10
+      WHERE id = $11
     `, [
       name, 
       icon_emoji || null, 
@@ -80,6 +82,7 @@ export async function updateAppBasicInfo(prevState: any, formData: FormData) {
       medical_director_id || null, 
       supported_platforms_str || null,
       status || 'draft',
+      supported_languages_str ? JSON.parse(supported_languages_str) : ['tr'],
       appId
     ]);
 
