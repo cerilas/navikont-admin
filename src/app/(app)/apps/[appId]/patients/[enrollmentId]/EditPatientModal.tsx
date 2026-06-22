@@ -101,25 +101,24 @@ export default function EditPatientModal({ patient, journeys, allDiseases = [] }
             <h3 className="mb-3 border-bottom pb-2">Sahip Olunan Diğer Hastalıklar</h3>
             <div className="mb-4">
               <label className="form-label">Hastanın mevcut hastalık geçmişini seçiniz (Çoklu seçim yapabilirsiniz)</label>
-              <div className="row g-2">
-                {allDiseases.map(d => (
-                  <div key={d.id} className="col-md-6 col-lg-4">
-                    <label className="form-check form-switch form-switch-lg mb-0">
+              {allDiseases.length > 0 ? (
+                <div className="form-selectgroup form-selectgroup-pills">
+                  {allDiseases.map(d => (
+                    <label key={d.id} className="form-selectgroup-item">
                       <input 
-                        className="form-check-input" 
                         type="checkbox" 
                         name="disease_ids" 
                         value={d.id} 
+                        className="form-selectgroup-input" 
                         defaultChecked={patient.disease_ids?.includes(d.id)}
                       />
-                      <span className="form-check-label text-truncate" title={d.name}>{d.name}</span>
+                      <span className="form-selectgroup-label" title={d.name}>{d.name}</span>
                     </label>
-                  </div>
-                ))}
-                {allDiseases.length === 0 && (
-                  <div className="text-muted small">Aktif hastalık bulunamadı. Lütfen "Hastalık Yönetimi" menüsünden hastalık ekleyin.</div>
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-muted small">Aktif hastalık bulunamadı. Lütfen "Hastalık Yönetimi" menüsünden hastalık ekleyin.</div>
+              )}
             </div>
 
             <h3 className="mb-3 border-bottom pb-2">Tedavi (Uygulama) Bilgileri</h3>
