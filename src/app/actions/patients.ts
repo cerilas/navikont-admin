@@ -109,6 +109,7 @@ export async function updatePatientProfile(prevState: any, formData: FormData) {
   const heightCm = formData.get('height_cm') ? parseFloat(formData.get('height_cm') as string) : null;
   const weightKg = formData.get('weight_kg') ? parseFloat(formData.get('weight_kg') as string) : null;
   const bloodType = formData.get('blood_type')?.toString() || null;
+  const diseaseIds = formData.getAll('disease_ids').map(id => id.toString());
 
   if (!fullName || !startDate) {
     return { error: 'Lütfen zorunlu alanları (Ad Soyad, Başlangıç Tarihi) doldurun.' };
@@ -148,6 +149,14 @@ export async function updatePatientProfile(prevState: any, formData: FormData) {
         INSERT INTO patient_profiles (id, user_id, birth_date, gender, height_cm, weight_kg, blood_type)
         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6)
       `, [userId, birthDate, gender, heightCm, weightKg, bloodType]);
+    }
+
+    // 4. Update patient_diseases
+    await db.query(`DELETE FROM patient_diseases WHERE patient_user_id = $1`, [userId]);
+    for (const dId of diseaseIds) {
+      if (dId) {
+        await db.query(`INSERT INTO patient_diseases (patient_user_id, disease_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [userId, dId]);
+      }
     }
 
     await db.query('COMMIT');

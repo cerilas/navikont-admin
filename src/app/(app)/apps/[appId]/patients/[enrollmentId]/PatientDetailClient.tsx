@@ -7,7 +7,7 @@ import { sendPasswordResetEmail, sendPasswordResetSMS } from '@/app/actions/auth
 import EditPatientModal from './EditPatientModal';
 import Swal from 'sweetalert2';
 
-export default function PatientDetailClient({ patient, journeys, doctors = [], progressLogs = [], unassignedInfo = null }: { patient: any, journeys: any[], doctors?: any[], progressLogs?: any[], unassignedInfo?: any }) {
+export default function PatientDetailClient({ patient, journeys, doctors = [], allDiseases = [], progressLogs = [], unassignedInfo = null }: { patient: any, journeys: any[], doctors?: any[], allDiseases?: any[], progressLogs?: any[], unassignedInfo?: any }) {
   const params = useParams();
   const appId = params.appId as string;
   const [activeTab, setActiveTab] = useState('overview');
@@ -598,7 +598,7 @@ export default function PatientDetailClient({ patient, journeys, doctors = [], p
       </div>
       
       {/* Edit Patient Modal */}
-      <EditPatientModal patient={patient} journeys={journeys} />
+      <EditPatientModal patient={patient} journeys={journeys} allDiseases={allDiseases} />
     
 
       {/* Log Details Modal */}

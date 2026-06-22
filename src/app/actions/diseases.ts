@@ -4,6 +4,16 @@ import db from '@/lib/db';
 import { redirect } from 'next/navigation';
 import crypto from 'crypto';
 
+export async function getAllActiveDiseases() {
+  try {
+    const res = await db.query('SELECT id, name FROM medical_diseases WHERE status = $1 ORDER BY name ASC', ['active']);
+    return res.rows;
+  } catch (err) {
+    console.error('Error fetching active diseases:', err);
+    return [];
+  }
+}
+
 export async function createDisease(prevState: any, formData: FormData) {
   const name = formData.get('name')?.toString();
   const slug = formData.get('slug')?.toString();

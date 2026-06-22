@@ -14,7 +14,7 @@ function SubmitButton() {
   );
 }
 
-export default function EditPatientModal({ patient, journeys }: { patient: any, journeys: any[] }) {
+export default function EditPatientModal({ patient, journeys, allDiseases = [] }: { patient: any, journeys: any[], allDiseases?: any[] }) {
   const [selectedJourney, setSelectedJourney] = useState<string>(patient.journey_id || '');
   const [state, formAction] = useActionState(async (prevState: any, formData: FormData) => {
     const res = await updatePatientProfile(prevState, formData);
@@ -95,6 +95,30 @@ export default function EditPatientModal({ patient, journeys }: { patient: any, 
                   <option value="O+">O+</option>
                   <option value="O-">O-</option>
                 </select>
+              </div>
+            </div>
+
+            <h3 className="mb-3 border-bottom pb-2">Sahip Olunan Diğer Hastalıklar</h3>
+            <div className="mb-4">
+              <label className="form-label">Hastanın mevcut hastalık geçmişini seçiniz (Çoklu seçim yapabilirsiniz)</label>
+              <div className="row g-2">
+                {allDiseases.map(d => (
+                  <div key={d.id} className="col-md-6 col-lg-4">
+                    <label className="form-check form-switch form-switch-lg mb-0">
+                      <input 
+                        className="form-check-input" 
+                        type="checkbox" 
+                        name="disease_ids" 
+                        value={d.id} 
+                        defaultChecked={patient.disease_ids?.includes(d.id)}
+                      />
+                      <span className="form-check-label text-truncate" title={d.name}>{d.name}</span>
+                    </label>
+                  </div>
+                ))}
+                {allDiseases.length === 0 && (
+                  <div className="text-muted small">Aktif hastalık bulunamadı. Lütfen "Hastalık Yönetimi" menüsünden hastalık ekleyin.</div>
+                )}
               </div>
             </div>
 

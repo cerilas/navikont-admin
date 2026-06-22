@@ -3,6 +3,7 @@ import Link from 'next/link';
 import PatientDetailClient from './PatientDetailClient';
 import { getBaseUrl } from '@/lib/url';
 import { getDoctors } from '@/app/actions/doctors';
+import { getAllActiveDiseases } from '@/app/actions/diseases';
 
 export default async function PatientDetailPage({ params }: { params: Promise<{ appId: string, enrollmentId: string }> }) {
   const { appId, enrollmentId } = await params;
@@ -44,6 +45,12 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
   const journeys = journeysRes.rows;
 
   const doctors = await getDoctors();
+  const allDiseases = await getAllActiveDiseases();
+
+  if (patient) {
+    const dRes = await db.query('SELECT disease_id FROM patient_diseases WHERE patient_user_id = $1', [patient.user_id]);
+    patient.disease_ids = dRes.rows.map(r => r.disease_id);
+  }
 
   if (!patient) {
     return (
@@ -194,7 +201,14 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
 
             {/* Right Main Content */}
             <div className="col-lg-9">
-              <PatientDetailClient patient={patient} journeys={journeys} doctors={doctors} progressLogs={progressLogs} unassignedInfo={unassignedInfo} />
+              <PatientDetailClient 
+          patient={patient} 
+          journeys={journeys} 
+          doctors={doctors}
+          allDiseases={allDiseases}
+          progressLogs={progressLogs} 
+          unassignedInfo={unassignedInfo} 
+        />
             </div>
 
           </div>
