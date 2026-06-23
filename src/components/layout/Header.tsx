@@ -33,13 +33,14 @@ export default async function Header({ hideLogo = false }: { hideLogo?: boolean 
               </div>
             </a>
             <div className="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+              <Link href={session?.user_type === 'doctor' ? "/dr/profile" : "/profile"} className="dropdown-item">Profilim</Link>
               {session?.user_type !== 'doctor' && (
                 <>
                   <Link href="/settings/diseases" className="dropdown-item">Hastalık Yönetimi</Link>
                   <Link href="/settings/doctors" className="dropdown-item">Doktor Yönetimi</Link>
-                  <div className="dropdown-divider"></div>
                 </>
               )}
+              <div className="dropdown-divider"></div>
               <form action={logout}>
                 <button type="submit" className="dropdown-item">Çıkış Yap</button>
               </form>
