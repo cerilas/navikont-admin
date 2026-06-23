@@ -58,9 +58,8 @@ export default async function AppDashboardPage({ params }: { params: Promise<{ a
 
   // 3. Activities: Notifications sent
   const notificationsRes = await db.query(`
-    SELECT COUNT(*) FROM patient_notifications pn
-    JOIN patient_app_enrollments pae ON pae.patient_user_id = pn.patient_user_id
-    WHERE pae.app_id = $1
+    SELECT COUNT(*) FROM patient_notifications
+    WHERE app_id = $1
   `, [appId]);
 
   // Activities: Questionnaires and Checkins
