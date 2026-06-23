@@ -48,6 +48,15 @@ export default function PatientDetailClient({ patient, journeys, doctors = [], a
     return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
   };
 
+  const formatDateTime = (dateStr: string) => {
+    if (!dateStr) return 'Hiç giriş yapılmadı';
+    const d = new Date(dateStr);
+    return d.toLocaleString('tr-TR', { 
+      day: '2-digit', month: '2-digit', year: 'numeric', 
+      hour: '2-digit', minute: '2-digit'
+    });
+  };
+
   const handleStatusChange = (newStatus: string) => {
     const statusMap: Record<string, string> = {
       'active': 'Aktif',
@@ -333,6 +342,19 @@ export default function PatientDetailClient({ patient, journeys, doctors = [], a
                 <div className="mb-3">
                   <div className="text-muted mb-1">Kayıt Tarihi</div>
                   <div>{formatDate(patient.created_at)}</div>
+                </div>
+                <div className="mb-3">
+                  <div className="text-muted mb-1">Son Görülme (Uygulamaya Giriş)</div>
+                  <div>
+                    {patient.last_active_at ? (
+                      <span className="text-success fw-medium">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon me-1"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path><path d="M12 7l0 5l3 3"></path></svg>
+                        {formatDateTime(patient.last_active_at)}
+                      </span>
+                    ) : (
+                      <span className="text-muted">{formatDateTime(patient.last_active_at)}</span>
+                    )}
+                  </div>
                 </div>
                 <div className="mb-3">
                   <div className="text-muted mb-1">Başlangıç Tarihi (Tedavi)</div>

@@ -14,6 +14,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
       e.status,
       e.start_date,
       e.created_at,
+      e.last_active_at,
       e.progress_percent,
       e.current_day,
       e.journey_id,
