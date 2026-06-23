@@ -1,9 +1,8 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { resetPassword } from '@/app/actions/auth';
-import Swal from 'sweetalert2';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -15,21 +14,43 @@ function SubmitButton() {
 }
 
 export default function ResetPasswordClient({ token, email }: { token: string, email: string }) {
+  const [isSuccess, setIsSuccess] = useState(false);
   const [state, formAction] = useActionState(async (prevState: any, formData: FormData) => {
     const res = await resetPassword(prevState, formData);
     if (res?.success) {
-      Swal.fire({
-        title: 'Başarılı!',
-        text: 'Şifreniz başarıyla oluşturuldu. Artık yeni şifrenizle giriş yapabilirsiniz.',
-        icon: 'success',
-        confirmButtonText: 'Tamam'
-      }).then(() => {
-        // Normally redirect to login page for the mobile app or web portal
-        window.location.href = '/'; 
-      });
+      setIsSuccess(true);
     }
     return res;
   }, null);
+
+  useEffect(() => {
+    if (isSuccess) {
+      // Try to open the mobile app automatically
+      window.location.href = 'navikont://';
+    }
+  }, [isSuccess]);
+
+  if (isSuccess) {
+    return (
+      <div className="card card-md">
+        <div className="card-body text-center py-5">
+          <div className="mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="icon text-green icon-lg" style={{width: '64px', height: '64px'}} width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M9 12l2 2l4 -4" /></svg>
+          </div>
+          <h2 className="h1 mb-3">Şifreniz Oluşturuldu!</h2>
+          <p className="text-secondary mb-4">
+            Hesabınız aktif hale getirildi. Artık telefonunuzdaki uygulamayı açarak giriş yapabilirsiniz.
+          </p>
+          <p className="text-muted text-sm mb-4">
+            <em>Uygulama otomatik açılmazsa, aşağıdaki butonu kullanabilir veya uygulamaya doğrudan giriş yapabilirsiniz.</em>
+          </p>
+          <a href="navikont://" className="btn btn-primary w-100">
+            Uygulamayı Aç
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form className="card card-md" action={formAction}>
