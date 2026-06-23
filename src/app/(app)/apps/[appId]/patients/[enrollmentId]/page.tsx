@@ -86,6 +86,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
     JOIN core_users u ON a.actor_user_id = u.id
     WHERE a.entity_type = 'patient' AND a.entity_id = $1
     ORDER BY a.created_at DESC
+    LIMIT 50
   `, [patient.user_id]);
   const auditLogs = auditRes.rows;
 
