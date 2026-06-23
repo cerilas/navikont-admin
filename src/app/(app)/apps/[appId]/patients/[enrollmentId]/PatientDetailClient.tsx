@@ -645,16 +645,32 @@ export default function PatientDetailClient({ patient, journeys, doctors = [], a
                             <div className="text-secondary mt-2">
                               {changes.length > 0 ? (
                                 <ul className="list-unstyled mb-0">
-                                  {changes.map((c, i) => (
-                                    <li key={i} className="mb-1">
-                                      <strong>{c.key === 'birth_date' ? 'Doğum Tarihi' : c.key === 'gender' ? 'Cinsiyet' : c.key === 'height_cm' ? 'Boy (cm)' : c.key === 'weight_kg' ? 'Kilo (kg)' : c.key === 'blood_type' ? 'Kan Grubu' : c.key === 'disease_ids' ? 'Hastalıklar' : c.key}:</strong>{' '}
-                                      <span className="text-danger text-decoration-line-through">{Array.isArray(c.oldVal) ? c.oldVal.join(', ') || 'Yok' : c.oldVal || 'Yok'}</span>
-                                      {' '}
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="icon text-muted mx-1" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0" /><path d="M15 16l4 -4" /><path d="M15 8l4 4" /></svg>
-                                      {' '}
-                                      <span className="text-success fw-bold">{Array.isArray(c.newVal) ? c.newVal.join(', ') || 'Yok' : c.newVal || 'Yok'}</span>
-                                    </li>
-                                  ))}
+                                  {changes.map((c, i) => {
+                                    const formatValue = (key: string, val: any) => {
+                                      if (key === 'disease_ids') {
+                                        if (!Array.isArray(val) || val.length === 0) return 'Yok';
+                                        return val.map(id => {
+                                          const d = allDiseases.find((d: any) => d.id === id || d.disease_id === id);
+                                          return d ? d.name : id;
+                                        }).join(', ');
+                                      }
+                                      if (key === 'gender') {
+                                        return val === 'male' ? 'Erkek' : val === 'female' ? 'Kadın' : val || 'Yok';
+                                      }
+                                      return Array.isArray(val) ? val.join(', ') || 'Yok' : val || 'Yok';
+                                    };
+
+                                    return (
+                                      <li key={i} className="mb-1">
+                                        <strong>{c.key === 'birth_date' ? 'Doğum Tarihi' : c.key === 'gender' ? 'Cinsiyet' : c.key === 'height_cm' ? 'Boy (cm)' : c.key === 'weight_kg' ? 'Kilo (kg)' : c.key === 'blood_type' ? 'Kan Grubu' : c.key === 'disease_ids' ? 'Hastalıklar' : c.key}:</strong>{' '}
+                                        <span className="text-danger text-decoration-line-through">{formatValue(c.key, c.oldVal)}</span>
+                                        {' '}
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="icon text-muted mx-1" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0" /><path d="M15 16l4 -4" /><path d="M15 8l4 4" /></svg>
+                                        {' '}
+                                        <span className="text-success fw-bold">{formatValue(c.key, c.newVal)}</span>
+                                      </li>
+                                    );
+                                  })}
                                 </ul>
                               ) : (
                                 <span className="text-muted">Detaylı değişiklik verisi bulunamadı.</span>
