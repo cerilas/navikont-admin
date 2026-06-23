@@ -632,14 +632,14 @@ export default function PatientDetailClient({ patient, journeys, doctors = [], a
                           <div className="card-body">
                             <div className="text-muted float-end text-xs">{formatDate(log.created_at)} {new Date(log.created_at).toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})}</div>
                             <h4>
-                              {log.actor_role === 'patient' ? (
+                              {!log.actor_user_id ? (
+                                <span className="badge bg-secondary-lt">Sistem Tarafından Değiştirildi</span>
+                              ) : log.actor_user_id === log.entity_id ? (
                                 <span className="badge bg-green-lt">Hasta Tarafından Değiştirildi</span>
-                              ) : log.actor_role === 'admin' ? (
-                                <span className="badge bg-purple-lt">Admin Tarafından Değiştirildi ({log.actor_name})</span>
                               ) : log.actor_role === 'doctor' ? (
                                 <span className="badge bg-blue-lt">Doktor Tarafından Değiştirildi ({log.actor_name})</span>
                               ) : (
-                                <span className="badge bg-secondary-lt">Sistem Tarafından Değiştirildi</span>
+                                <span className="badge bg-purple-lt">Admin Tarafından Değiştirildi ({log.actor_name})</span>
                               )}
                             </h4>
                             <div className="text-secondary mt-2">
