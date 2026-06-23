@@ -30,7 +30,7 @@ export default async function AppDashboardPage({ params }: { params: Promise<{ a
   const doctorCount = doctorsRes.rows[0].count;
 
   // Fetch automation rules status
-  const rulesRes = await db.query('SELECT COUNT(*) FROM core_rules WHERE target_type = $1 AND target_id = $2 AND rule_type = $3', ['app', appId, 'onboarding_trigger']);
+  const rulesRes = await db.query('SELECT COUNT(*) FROM core_rules WHERE target_type = $1 AND target_id = $2 AND rule_type = $3 AND is_active = true', ['app', appId, 'onboarding_trigger']);
   const hasAutomation = parseInt(rulesRes.rows[0].count) > 0;
 
   return (
