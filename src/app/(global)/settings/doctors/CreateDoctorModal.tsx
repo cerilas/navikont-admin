@@ -5,6 +5,8 @@ import { useFormStatus } from 'react-dom';
 import { createDoctor } from '@/app/actions/doctors';
 import Swal from 'sweetalert2';
 
+import AvatarUploader from '@/components/profile/AvatarUploader';
+
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
@@ -50,6 +52,8 @@ export default function CreateDoctorModal({ apps }: { apps: any[] }) {
           <div className="modal-body">
             {state?.error && <div className="alert alert-danger">{state.error}</div>}
             
+            <AvatarUploader />
+
             <div className="mb-3">
               <label className="form-label required">Ad Soyad</label>
               <input type="text" className="form-control" name="full_name" placeholder="Dr. Ali Yılmaz" required />

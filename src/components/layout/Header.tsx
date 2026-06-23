@@ -22,8 +22,11 @@ export default async function Header({ hideLogo = false }: { hideLogo?: boolean 
 
           <div className="nav-item dropdown">
             <a href="#" className="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Open user menu">
-              <span className="avatar avatar-sm bg-transparent border-0 text-muted">
-                <IconUserCircle size={32} stroke={1.5} />
+              <span 
+                className={`avatar avatar-sm border-0 ${session?.avatar_url ? '' : 'bg-transparent text-muted'}`}
+                style={session?.avatar_url ? { backgroundImage: `url(${session.avatar_url})` } : {}}
+              >
+                {!session?.avatar_url && <IconUserCircle size={32} stroke={1.5} />}
               </span>
               <div className="d-none d-xl-block ps-2">
                 <div>{session?.full_name || 'Kullanıcı'}</div>

@@ -203,7 +203,7 @@ export async function login(prevState: any, formData: FormData) {
   let redirectUrl = '/';
 
   try {
-    const res = await db.query('SELECT id, password_hash, full_name, user_type FROM core_users WHERE email = $1', [email]);
+    const res = await db.query('SELECT id, password_hash, full_name, user_type, avatar_url FROM core_users WHERE email = $1', [email]);
     if (res.rows.length === 0) return { error: 'Geçersiz e-posta veya şifre.' };
     
     const user = res.rows[0];
@@ -215,7 +215,7 @@ export async function login(prevState: any, formData: FormData) {
     }
 
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const session = await encrypt({ id: user.id, email, full_name: user.full_name, user_type: user.user_type });
+    const session = await encrypt({ id: user.id, email, full_name: user.full_name, user_type: user.user_type, avatar_url: user.avatar_url });
     
     const cookieStore = await cookies();
     cookieStore.set('session', session, { expires, httpOnly: true, sameSite: 'lax', path: '/' });

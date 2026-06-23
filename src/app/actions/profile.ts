@@ -11,7 +11,7 @@ export async function getProfile() {
     if (!session) return null;
 
     const res = await db.query(`
-      SELECT u.id, u.full_name, u.email, u.phone, u.user_type,
+      SELECT u.id, u.full_name, u.email, u.phone, u.user_type, u.avatar_url,
              dp.institution, dp.specialty, dp.address, dp.age
       FROM core_users u
       LEFT JOIN doctor_profiles dp ON u.id = dp.doctor_user_id
@@ -34,6 +34,7 @@ export async function updateProfile(prevState: any, formData: FormData) {
     const full_name = formData.get('full_name')?.toString();
     const email = formData.get('email')?.toString();
     const phone = formData.get('phone')?.toString() || null;
+    const avatar_url = formData.get('avatar_url')?.toString() || null;
     
     if (!full_name || !email) {
       return { error: 'Ad Soyad ve E-posta alanları zorunludur.' };
@@ -48,9 +49,9 @@ export async function updateProfile(prevState: any, formData: FormData) {
     // Update core user
     await db.query(`
       UPDATE core_users 
-      SET full_name = $1, email = $2, phone = $3, updated_at = NOW()
-      WHERE id = $4
-    `, [full_name, email, phone, session.id]);
+      SET full_name = $1, email = $2, phone = $3, avatar_url = $4, updated_at = NOW()
+      WHERE id = $5
+    `, [full_name, email, phone, avatar_url, session.id]);
 
     // If doctor, update doctor profile
     if (session.user_type === 'doctor') {
@@ -67,6 +68,25 @@ export async function updateProfile(prevState: any, formData: FormData) {
         DO UPDATE SET institution = $2, specialty = $3, address = $4, age = $5, updated_at = NOW()
       `, [session.id, institution, specialty, address, age]);
     }
+
+    // Refresh session to reflect new full_name and avatar_url
+    const { encrypt } = await import('@/lib/auth');
+    const { cookies } = await import('next/headers');
+    const newSession = await encrypt({
+      id: session.id,
+      email: email,
+      full_name: full_name,
+      user_type: session.user_type,
+      avatar_url: avatar_url
+    });
+    
+    const cookieStore = await cookies();
+    cookieStore.set('session', newSession, { 
+      expires: new Date(Date.now() + 24 * 60 * 60 * 1000), 
+      httpOnly: true, 
+      sameSite: 'lax', 
+      path: '/' 
+    });
 
     revalidatePath('/profile');
     revalidatePath('/dr/profile');

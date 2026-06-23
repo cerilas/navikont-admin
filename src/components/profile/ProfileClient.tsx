@@ -4,6 +4,7 @@ import { useState, useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { updateProfile, updatePassword } from '@/app/actions/profile';
 import Swal from 'sweetalert2';
+import AvatarUploader from './AvatarUploader';
 
 function SubmitProfileButton() {
   const { pending } = useFormStatus();
@@ -89,6 +90,9 @@ export default function ProfileClient({ profile }: { profile: any }) {
               {profileState?.error && <div className="alert alert-danger">{profileState.error}</div>}
               
               <div className="row g-3">
+                <div className="col-12">
+                  <AvatarUploader defaultValue={profile.avatar_url || ''} />
+                </div>
                 <div className="col-md-6">
                   <label className="form-label required">Ad Soyad</label>
                   <input type="text" className="form-control" name="full_name" defaultValue={profile.full_name} required />

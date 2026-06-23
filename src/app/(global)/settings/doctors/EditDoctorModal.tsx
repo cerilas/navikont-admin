@@ -5,6 +5,8 @@ import { useFormStatus } from 'react-dom';
 import { updateDoctor, sendPasswordReset, sendPasswordResetSMS } from '@/app/actions/doctors';
 import Swal from 'sweetalert2';
 
+import AvatarUploader from '@/components/profile/AvatarUploader';
+
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
@@ -75,6 +77,8 @@ export default function EditDoctorModal({ doctor, apps }: { doctor: any, apps: a
           <div className="modal-body">
             {state?.error && <div className="alert alert-danger">{state.error}</div>}
             
+            <AvatarUploader defaultValue={doctor.avatar_url || ''} />
+
             <div className="mb-3">
               <label className="form-label required">Ad Soyad</label>
               <input type="text" className="form-control" name="full_name" defaultValue={doctor.full_name} required />

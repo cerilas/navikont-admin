@@ -11,7 +11,7 @@ import bcrypt from 'bcryptjs';
 export async function getDoctors() {
   try {
     const res = await db.query(`
-      SELECT id, full_name, email, phone, status, created_at, last_login_at
+      SELECT id, full_name, email, phone, avatar_url, status, created_at, last_login_at
       FROM core_users
       WHERE user_type = 'doctor'
       ORDER BY full_name ASC
@@ -27,7 +27,7 @@ export async function getDoctorsPaginated(page: number = 1, limit: number = 20, 
   try {
     const offset = (page - 1) * limit;
     let queryText = `
-      SELECT u.id, u.full_name, u.email, u.phone, u.status, u.created_at, u.last_login_at,
+      SELECT u.id, u.full_name, u.email, u.phone, u.avatar_url, u.status, u.created_at, u.last_login_at,
              dp.institution, dp.specialty, dp.address, dp.age
       FROM core_users u
       LEFT JOIN doctor_profiles dp ON u.id = dp.doctor_user_id
@@ -94,6 +94,7 @@ export async function createDoctor(prevState: any, formData: FormData) {
   const full_name = formData.get('full_name')?.toString();
   const email = formData.get('email')?.toString();
   const phone = formData.get('phone')?.toString() || null;
+  const avatar_url = formData.get('avatar_url')?.toString() || null;
   const app_ids = formData.getAll('app_ids'); // Change here
   const institution = formData.get('institution')?.toString() || null;
   const specialty = formData.get('specialty')?.toString() || null;
@@ -119,9 +120,9 @@ export async function createDoctor(prevState: any, formData: FormData) {
     const reset_token_expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     await db.query(`
-      INSERT INTO core_users (id, full_name, email, phone, password_hash, user_type, status, reset_token, reset_token_expires)
-      VALUES ($1, $2, $3, $4, $5, 'doctor', 'active', $6, $7)
-    `, [id, full_name, email, phone, password_hash, reset_token, reset_token_expires]);
+      INSERT INTO core_users (id, full_name, email, phone, avatar_url, password_hash, user_type, status, reset_token, reset_token_expires)
+      VALUES ($1, $2, $3, $4, $5, $6, 'doctor', 'active', $7, $8)
+    `, [id, full_name, email, phone, avatar_url, password_hash, reset_token, reset_token_expires]);
 
     if (app_ids && app_ids.length > 0) {
       for (const appId of app_ids) {
@@ -172,6 +173,7 @@ export async function updateDoctor(prevState: any, formData: FormData) {
   const full_name = formData.get('full_name')?.toString();
   const email = formData.get('email')?.toString();
   const phone = formData.get('phone')?.toString() || null;
+  const avatar_url = formData.get('avatar_url')?.toString() || null;
   const status = formData.get('status')?.toString();
   const app_ids = formData.getAll('app_ids'); // Change here
   const institution = formData.get('institution')?.toString() || null;
@@ -192,9 +194,9 @@ export async function updateDoctor(prevState: any, formData: FormData) {
 
     await db.query(`
       UPDATE core_users 
-      SET full_name = $1, email = $2, phone = $3, status = $4, updated_at = NOW()
-      WHERE id = $5 AND user_type = 'doctor'
-    `, [full_name, email, phone, status || 'active', id]);
+      SET full_name = $1, email = $2, phone = $3, avatar_url = $4, status = $5, updated_at = NOW()
+      WHERE id = $6 AND user_type = 'doctor'
+    `, [full_name, email, phone, avatar_url, status || 'active', id]);
 
     await db.query(`DELETE FROM doctor_apps WHERE doctor_user_id = $1`, [id]);
     

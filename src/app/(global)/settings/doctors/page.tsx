@@ -81,7 +81,12 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                       <tr key={d.id}>
                         <td>
                           <div className="d-flex py-1 align-items-center">
-                            <span className="avatar me-2 bg-blue-lt">{d.full_name.charAt(0)}</span>
+                            <span 
+                              className={`avatar me-2 ${d.avatar_url ? '' : 'bg-blue-lt'}`}
+                              style={d.avatar_url ? { backgroundImage: `url(${d.avatar_url})` } : {}}
+                            >
+                              {!d.avatar_url && d.full_name.charAt(0)}
+                            </span>
                             <div className="flex-fill">
                               <div className="font-weight-medium">{d.full_name}</div>
                             </div>
