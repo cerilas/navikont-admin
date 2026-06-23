@@ -1,4 +1,5 @@
 import db from '@/lib/db';
+import AppDashboardClient from './AppDashboardClient';
 
 export default async function AppDashboardPage({ params }: { params: Promise<{ appId: string }> }) {
   const { appId } = await params;
@@ -18,7 +19,7 @@ export default async function AppDashboardPage({ params }: { params: Promise<{ a
   }
 
   // Fetch modules count
-  const modulesRes = await db.query('SELECT COUNT(*) FROM content_modules WHERE app_id = $1', [appId]);
+  const modulesRes = await db.query('SELECT COUNT(*) FROM content_modules WHERE app_id = $1 AND deleted_at IS NULL', [appId]);
   const moduleCount = modulesRes.rows[0].count;
 
   // Fetch patients count
@@ -32,6 +33,64 @@ export default async function AppDashboardPage({ params }: { params: Promise<{ a
   // Fetch automation rules status
   const rulesRes = await db.query("SELECT COUNT(*) FROM core_rules WHERE target_type = $1 AND target_id = $2 AND rule_type = 'journey_assignment' AND is_active = true", ['app', appId]);
   const hasAutomation = parseInt(rulesRes.rows[0].count) > 0;
+
+  // --- NEW STATS DATA FETCHING ---
+  // 1. Enrollments over time (last 6 months)
+  const enrollmentsOverTimeRes = await db.query(`
+    SELECT TO_CHAR(created_at, 'YYYY-MM') as month, COUNT(*) as count
+    FROM patient_app_enrollments
+    WHERE app_id = $1 AND created_at >= NOW() - INTERVAL '6 months'
+    GROUP BY month
+    ORDER BY month ASC
+  `, [appId]);
+
+  // 2. Top conditions
+  const topConditionsRes = await db.query(`
+    SELECT md.name, COUNT(*) as count
+    FROM patient_diseases pd
+    JOIN patient_app_enrollments pae ON pae.patient_user_id = pd.patient_user_id
+    JOIN medical_diseases md ON md.id = pd.disease_id
+    WHERE pae.app_id = $1
+    GROUP BY md.name
+    ORDER BY count DESC
+    LIMIT 5
+  `, [appId]);
+
+  // 3. Activities: Notifications sent
+  const notificationsRes = await db.query(`
+    SELECT COUNT(*) FROM patient_notifications pn
+    JOIN patient_app_enrollments pae ON pae.patient_user_id = pn.patient_user_id
+    WHERE pae.app_id = $1
+  `, [appId]);
+
+  // Activities: Questionnaires and Checkins
+  const moduleProgressRes = await db.query(`
+    SELECT cmt.code as type, COUNT(*) as count
+    FROM patient_module_progress pmp
+    JOIN content_module_versions cmv ON cmv.id = pmp.module_version_id
+    JOIN content_modules cm ON cm.id = cmv.module_id
+    JOIN content_module_types cmt ON cmt.id = cm.module_type_id
+    WHERE pmp.app_id = $1
+    GROUP BY cmt.code
+  `, [appId]);
+
+  let questionnaires = 0;
+  let checkins = 0;
+  
+  for (const row of moduleProgressRes.rows) {
+    if (row.type === 'questionnaire') questionnaires = parseInt(row.count, 10);
+    if (row.type === 'checkin') checkins = parseInt(row.count, 10);
+  }
+
+  const stats = {
+    enrollmentsOverTime: enrollmentsOverTimeRes.rows,
+    topConditions: topConditionsRes.rows,
+    activities: {
+      notifications: notificationsRes.rows[0].count,
+      questionnaires,
+      checkins
+    }
+  };
 
   return (
     <>
@@ -116,6 +175,8 @@ export default async function AppDashboardPage({ params }: { params: Promise<{ a
             </div>
 
           </div>
+
+          <AppDashboardClient stats={stats} />
         </div>
       </div>
     </>
