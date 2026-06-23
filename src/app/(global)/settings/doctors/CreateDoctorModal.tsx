@@ -14,7 +14,7 @@ function SubmitButton() {
   );
 }
 
-export default function CreateDoctorModal() {
+export default function CreateDoctorModal({ apps }: { apps: any[] }) {
   const formRef = useRef<HTMLFormElement>(null);
 
   const [state, formAction] = useActionState(async (prevState: any, formData: FormData) => {
@@ -64,6 +64,27 @@ export default function CreateDoctorModal() {
             <div className="mb-3">
               <label className="form-label">Telefon (Opsiyonel)</label>
               <input type="tel" className="form-control" name="phone" placeholder="+90 555 555 5555" />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Atanan Uygulamalar</label>
+              {apps.length > 0 ? (
+                <div className="form-selectgroup form-selectgroup-pills">
+                  {apps.map((a: any) => (
+                    <label key={a.id} className="form-selectgroup-item">
+                      <input 
+                        type="checkbox" 
+                        name="app_ids" 
+                        value={a.id} 
+                        className="form-selectgroup-input" 
+                      />
+                      <span className="form-selectgroup-label">{a.name}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-muted small">Sistemde uygulama bulunamadı.</div>
+              )}
             </div>
           </div>
           <div className="modal-footer">

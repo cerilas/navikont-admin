@@ -55,6 +55,28 @@ export async function getDoctorsPaginated(page: number = 1, limit: number = 20, 
     const totalCount = parseInt(countRes.rows[0].total);
 
     const res = await db.query(queryText, [...params, limit, offset]);
+
+    // Fetch app assignments
+    const doctorIds = res.rows.map(d => d.id);
+    if (doctorIds.length > 0) {
+      const appsRes = await db.query(`
+        SELECT da.doctor_user_id, a.id, a.name 
+        FROM doctor_apps da 
+        JOIN content_apps a ON da.app_id = a.id 
+        WHERE da.doctor_user_id = ANY($1)
+      `, [doctorIds]);
+      
+      const appsByDoctor = appsRes.rows.reduce((acc: any, row: any) => {
+        if (!acc[row.doctor_user_id]) acc[row.doctor_user_id] = [];
+        acc[row.doctor_user_id].push({ id: row.id, name: row.name });
+        return acc;
+      }, {});
+
+      res.rows.forEach(d => {
+        d.assigned_apps = appsByDoctor[d.id] || [];
+        d.app_ids = (appsByDoctor[d.id] || []).map((a: any) => a.id);
+      });
+    }
     
     return {
       doctors: res.rows,
@@ -70,6 +92,7 @@ export async function createDoctor(prevState: any, formData: FormData) {
   const full_name = formData.get('full_name')?.toString();
   const email = formData.get('email')?.toString();
   const phone = formData.get('phone')?.toString() || null;
+  const app_ids = formData.getAll('app_ids').map(id => id.toString());
 
   if (!full_name || !email) {
     return { error: 'Lütfen Ad Soyad ve E-posta alanlarını doldurun.' };
@@ -92,6 +115,14 @@ export async function createDoctor(prevState: any, formData: FormData) {
       INSERT INTO core_users (id, full_name, email, phone, password_hash, user_type, status, reset_token, reset_token_expires)
       VALUES ($1, $2, $3, $4, $5, 'doctor', 'active', $6, $7)
     `, [id, full_name, email, phone, password_hash, reset_token, reset_token_expires]);
+
+    if (app_ids.length > 0) {
+      for (const appId of app_ids) {
+        if (appId) {
+          await db.query(`INSERT INTO doctor_apps (doctor_user_id, app_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [id, appId]);
+        }
+      }
+    }
 
     // Send Welcome Email
     const baseUrl = getBaseUrl();
@@ -132,6 +163,7 @@ export async function updateDoctor(prevState: any, formData: FormData) {
   const email = formData.get('email')?.toString();
   const phone = formData.get('phone')?.toString() || null;
   const status = formData.get('status')?.toString();
+  const app_ids = formData.getAll('app_ids').map(aid => aid.toString());
 
   if (!id || !full_name || !email) {
     return { error: 'Lütfen Ad Soyad ve E-posta alanlarını doldurun.' };
@@ -148,6 +180,13 @@ export async function updateDoctor(prevState: any, formData: FormData) {
       SET full_name = $1, email = $2, phone = $3, status = $4, updated_at = NOW()
       WHERE id = $5 AND user_type = 'doctor'
     `, [full_name, email, phone, status || 'active', id]);
+
+    await db.query(`DELETE FROM doctor_apps WHERE doctor_user_id = $1`, [id]);
+    for (const appId of app_ids) {
+      if (appId) {
+        await db.query(`INSERT INTO doctor_apps (doctor_user_id, app_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [id, appId]);
+      }
+    }
 
     revalidatePath('/settings/doctors');
     return { success: true, message: 'Doktor bilgileri başarıyla güncellendi.' };

@@ -4,6 +4,7 @@ import CreateDoctorModal from './CreateDoctorModal';
 import EditDoctorModal from './EditDoctorModal';
 import DoctorsSearch from './DoctorsSearch';
 import Pagination from '@/app/(app)/apps/[appId]/patients/Pagination';
+import db from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,9 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
 
   const { doctors, totalCount } = await getDoctorsPaginated(currentPage, limit, searchQ);
   const totalPages = Math.ceil(totalCount / limit);
+
+  const appsRes = await db.query('SELECT id, name FROM content_apps ORDER BY name ASC');
+  const apps = appsRes.rows;
 
   return (
     <>
@@ -62,6 +66,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                     <th>Doktor Adı</th>
                     <th>E-posta</th>
                     <th>Telefon</th>
+                    <th>Uygulamalar</th>
                     <th>Durum</th>
                     <th className="w-1"></th>
                   </tr>
@@ -89,13 +94,24 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                           {d.phone || '-'}
                         </td>
                         <td className="text-muted">
+                          {d.assigned_apps && d.assigned_apps.length > 0 ? (
+                            <div className="d-flex flex-wrap gap-1">
+                              {d.assigned_apps.map((a: any) => (
+                                <span key={a.id} className="badge bg-blue-lt">{a.name}</span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted small">-</span>
+                          )}
+                        </td>
+                        <td className="text-muted">
                           {d.status === 'active' ? <span className="status status-green">Aktif</span> : <span className="status">{d.status}</span>}
                         </td>
                         <td>
                           <a href="#" className="btn btn-sm" data-bs-toggle="modal" data-bs-target={`#modal-edit-doctor-${d.id}`}>
                             Yönet
                           </a>
-                          <EditDoctorModal doctor={d} />
+                          <EditDoctorModal doctor={d} apps={apps} />
                         </td>
                       </tr>
                     ))
@@ -114,7 +130,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
-      <CreateDoctorModal />
+      <CreateDoctorModal apps={apps} />
     </>
   );
 }

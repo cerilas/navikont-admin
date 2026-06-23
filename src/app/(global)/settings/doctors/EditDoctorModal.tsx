@@ -14,7 +14,7 @@ function SubmitButton() {
   );
 }
 
-export default function EditDoctorModal({ doctor }: { doctor: any }) {
+export default function EditDoctorModal({ doctor, apps }: { doctor: any, apps: any[] }) {
   const [isSendingReset, setIsSendingReset] = useState(false);
   const [isSendingSMS, setIsSendingSMS] = useState(false);
   const modalId = `modal-edit-doctor-${doctor.id}`;
@@ -88,6 +88,28 @@ export default function EditDoctorModal({ doctor }: { doctor: any }) {
             <div className="mb-3">
               <label className="form-label">Telefon</label>
               <input type="tel" className="form-control" name="phone" defaultValue={doctor.phone || ''} />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Atanan Uygulamalar</label>
+              {apps && apps.length > 0 ? (
+                <div className="form-selectgroup form-selectgroup-pills">
+                  {apps.map((a: any) => (
+                    <label key={a.id} className="form-selectgroup-item">
+                      <input 
+                        type="checkbox" 
+                        name="app_ids" 
+                        value={a.id} 
+                        className="form-selectgroup-input" 
+                        defaultChecked={doctor.app_ids?.includes(a.id)}
+                      />
+                      <span className="form-selectgroup-label">{a.name}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-muted small">Sistemde uygulama bulunamadı.</div>
+              )}
             </div>
 
             <div className="mb-4">
