@@ -20,7 +20,7 @@ export default async function AppSelectionPage() {
     FROM content_apps a 
     LEFT JOIN medical_diseases d ON a.disease_id = d.id 
     LEFT JOIN core_users u ON a.medical_director_id = u.id
-    ORDER BY a.created_at DESC
+    ORDER BY patient_count DESC, a.created_at DESC
   `);
   const apps = appsRes.rows;
 
