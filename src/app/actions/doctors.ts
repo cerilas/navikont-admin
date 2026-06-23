@@ -27,9 +27,11 @@ export async function getDoctorsPaginated(page: number = 1, limit: number = 20, 
   try {
     const offset = (page - 1) * limit;
     let queryText = `
-      SELECT id, full_name, email, phone, status, created_at, last_login_at
-      FROM core_users
-      WHERE user_type = 'doctor'
+      SELECT u.id, u.full_name, u.email, u.phone, u.status, u.created_at, u.last_login_at,
+             dp.institution, dp.specialty, dp.address, dp.age
+      FROM core_users u
+      LEFT JOIN doctor_profiles dp ON u.id = dp.doctor_user_id
+      WHERE u.user_type = 'doctor'
     `;
     let countQueryText = `
       SELECT COUNT(*) as total
@@ -40,12 +42,12 @@ export async function getDoctorsPaginated(page: number = 1, limit: number = 20, 
 
     if (search) {
       params.push(`%${search}%`);
-      const searchClause = ` AND (full_name ILIKE $1 OR email ILIKE $1) `;
+      const searchClause = ` AND (u.full_name ILIKE $1 OR u.email ILIKE $1) `;
       queryText += searchClause;
       countQueryText += searchClause;
     }
 
-    queryText += ` ORDER BY full_name ASC `;
+    queryText += ` ORDER BY u.full_name ASC `;
     
     // Add pagination
     const paginationParamsStart = params.length + 1;
@@ -93,6 +95,11 @@ export async function createDoctor(prevState: any, formData: FormData) {
   const email = formData.get('email')?.toString();
   const phone = formData.get('phone')?.toString() || null;
   const app_id = formData.get('app_id')?.toString();
+  const institution = formData.get('institution')?.toString() || null;
+  const specialty = formData.get('specialty')?.toString() || null;
+  const address = formData.get('address')?.toString() || null;
+  const ageStr = formData.get('age')?.toString();
+  const age = ageStr ? parseInt(ageStr, 10) : null;
 
   if (!full_name || !email) {
     return { error: 'Lütfen Ad Soyad ve E-posta alanlarını doldurun.' };
@@ -119,6 +126,11 @@ export async function createDoctor(prevState: any, formData: FormData) {
     if (app_id) {
       await db.query(`INSERT INTO doctor_apps (doctor_user_id, app_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [id, app_id]);
     }
+
+    await db.query(`
+      INSERT INTO doctor_profiles (doctor_user_id, institution, specialty, address, age)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [id, institution, specialty, address, age]);
 
     // Send Welcome Email
     const baseUrl = getBaseUrl();
@@ -160,6 +172,11 @@ export async function updateDoctor(prevState: any, formData: FormData) {
   const phone = formData.get('phone')?.toString() || null;
   const status = formData.get('status')?.toString();
   const app_id = formData.get('app_id')?.toString();
+  const institution = formData.get('institution')?.toString() || null;
+  const specialty = formData.get('specialty')?.toString() || null;
+  const address = formData.get('address')?.toString() || null;
+  const ageStr = formData.get('age')?.toString();
+  const age = ageStr ? parseInt(ageStr, 10) : null;
 
   if (!id || !full_name || !email) {
     return { error: 'Lütfen Ad Soyad ve E-posta alanlarını doldurun.' };
@@ -181,6 +198,13 @@ export async function updateDoctor(prevState: any, formData: FormData) {
     if (app_id) {
       await db.query(`INSERT INTO doctor_apps (doctor_user_id, app_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [id, app_id]);
     }
+
+    await db.query(`
+      INSERT INTO doctor_profiles (doctor_user_id, institution, specialty, address, age, updated_at)
+      VALUES ($1, $2, $3, $4, $5, NOW())
+      ON CONFLICT (doctor_user_id) 
+      DO UPDATE SET institution = $2, specialty = $3, address = $4, age = $5, updated_at = NOW()
+    `, [id, institution, specialty, address, age]);
 
     revalidatePath('/settings/doctors');
     return { success: true, message: 'Doktor bilgileri başarıyla güncellendi.' };

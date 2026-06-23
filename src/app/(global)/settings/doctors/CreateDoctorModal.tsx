@@ -79,6 +79,31 @@ export default function CreateDoctorModal({ apps }: { apps: any[] }) {
                 <div className="text-muted small">Sistemde uygulama bulunamadı.</div>
               )}
             </div>
+
+            <div className="hr-text">Profil Bilgileri (Opsiyonel)</div>
+
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label">Kurum</label>
+                <input type="text" className="form-control" name="institution" placeholder="Çalıştığı Kurum" />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Uzmanlık</label>
+                <input type="text" className="form-control" name="specialty" placeholder="Kardiyoloji" />
+              </div>
+            </div>
+
+            <div className="row g-3 mt-1">
+              <div className="col-md-4">
+                <label className="form-label">Yaş</label>
+                <input type="number" className="form-control" name="age" placeholder="45" min="18" max="100" />
+              </div>
+              <div className="col-md-8">
+                <label className="form-label">Adres</label>
+                <input type="text" className="form-control" name="address" placeholder="İl, İlçe, Mahalle..." />
+              </div>
+            </div>
+
           </div>
           <div className="modal-footer">
             <button type="button" className="btn me-auto" data-bs-dismiss="modal">İptal</button>
