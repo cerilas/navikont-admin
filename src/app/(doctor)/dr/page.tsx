@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { decrypt } from '@/lib/auth';
+import Header from "@/components/layout/Header";
 
 export const dynamic = 'force-dynamic';
 

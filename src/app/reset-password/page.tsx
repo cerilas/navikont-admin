@@ -9,11 +9,12 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
 
   let isValid = false;
   let userEmail = '';
+  let userType = '';
   let errorMessage = '';
 
   if (token) {
     const userRes = await db.query(`
-      SELECT email, reset_token_expires 
+      SELECT email, reset_token_expires, user_type 
       FROM core_users 
       WHERE reset_token = $1
     `, [token]);
@@ -25,6 +26,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
       } else {
         isValid = true;
         userEmail = user.email;
+        userType = user.user_type;
       }
     } else {
       errorMessage = 'Geçersiz veya kullanılmış sıfırlama bağlantısı.';
@@ -43,7 +45,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
         </div>
         
         {isValid ? (
-          <ResetPasswordClient token={token as string} email={userEmail} />
+          <ResetPasswordClient token={token as string} email={userEmail} userType={userType} />
         ) : (
           <div className="card card-md">
             <div className="card-body text-center py-4">
