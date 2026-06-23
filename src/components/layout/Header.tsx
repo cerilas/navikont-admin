@@ -26,14 +26,20 @@ export default async function Header({ hideLogo = false }: { hideLogo?: boolean 
                 <IconUserCircle size={32} stroke={1.5} />
               </span>
               <div className="d-none d-xl-block ps-2">
-                <div>{session?.name || 'Kullanıcı'}</div>
-                <div className="mt-1 small text-muted">{session?.role === 'super_admin' ? 'Süper Admin' : 'Admin'}</div>
+                <div>{session?.full_name || 'Kullanıcı'}</div>
+                <div className="mt-1 small text-muted">
+                  {session?.user_type === 'doctor' ? 'Doktor' : (session?.user_type === 'super_admin' ? 'Süper Admin' : 'Admin')}
+                </div>
               </div>
             </a>
             <div className="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-              <Link href="/settings/diseases" className="dropdown-item">Hastalık Yönetimi</Link>
-              <Link href="/settings/doctors" className="dropdown-item">Doktor Yönetimi</Link>
-              <div className="dropdown-divider"></div>
+              {session?.user_type !== 'doctor' && (
+                <>
+                  <Link href="/settings/diseases" className="dropdown-item">Hastalık Yönetimi</Link>
+                  <Link href="/settings/doctors" className="dropdown-item">Doktor Yönetimi</Link>
+                  <div className="dropdown-divider"></div>
+                </>
+              )}
               <form action={logout}>
                 <button type="submit" className="dropdown-item">Çıkış Yap</button>
               </form>
