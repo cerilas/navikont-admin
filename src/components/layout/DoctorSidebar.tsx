@@ -2,18 +2,30 @@ import Link from 'next/link';
 import { getSession } from '@/lib/auth';
 import db from '@/lib/db';
 
+import { cookies } from 'next/headers';
+
 export default async function DoctorSidebar({ appId }: { appId?: string }) {
-  const basePath = appId ? `/dr/apps/${appId}` : '';
   const session = await getSession();
   let showAppsButton = true;
+  let resolvedAppId = appId;
 
   if (session?.user_type === 'doctor') {
-    const appsRes = await db.query('SELECT COUNT(*) FROM doctor_apps WHERE doctor_user_id = $1', [session.id]);
-    const count = parseInt(appsRes.rows[0].count, 10);
-    if (count <= 1) {
+    const appsRes = await db.query('SELECT app_id FROM doctor_apps WHERE doctor_user_id = $1 LIMIT 2', [session.id]);
+    const apps = appsRes.rows;
+    if (apps.length <= 1) {
       showAppsButton = false;
+      if (apps.length === 1 && !resolvedAppId) {
+        resolvedAppId = apps[0].app_id;
+      }
     }
   }
+
+  if (!resolvedAppId) {
+    const cookieStore = await cookies();
+    resolvedAppId = cookieStore.get('last_active_app_id')?.value;
+  }
+
+  const basePath = resolvedAppId ? `/dr/apps/${resolvedAppId}` : '';
 
   return (
     <aside className="navbar navbar-vertical navbar-expand-lg" data-bs-theme="light">
@@ -39,7 +51,7 @@ export default async function DoctorSidebar({ appId }: { appId?: string }) {
               </li>
             )}
             
-            {appId && (
+            {resolvedAppId && (
               <>
                 <li className="nav-item mt-3 mb-2 px-3">
                   <span className="text-muted text-uppercase fs-4 fw-bold">Doktor Portalı</span>

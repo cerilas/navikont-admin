@@ -42,7 +42,16 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+
+  // Track last active app for sidebar continuity
+  const appMatch = path.match(/^\/dr\/apps\/([^\/]+)/);
+  if (appMatch) {
+    const appId = appMatch[1];
+    response.cookies.set('last_active_app_id', appId, { path: '/', maxAge: 60 * 60 * 24 * 7 });
+  }
+
+  return response;
 }
 
 export const config = {
