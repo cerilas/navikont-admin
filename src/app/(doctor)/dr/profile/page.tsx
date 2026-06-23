@@ -2,6 +2,7 @@ import ProfileClient from '@/components/profile/ProfileClient';
 import { getProfile } from '@/app/actions/profile';
 import { redirect } from 'next/navigation';
 import Header from "@/components/layout/Header";
+import DoctorSidebar from "@/components/layout/DoctorSidebar";
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,7 @@ export default async function DoctorProfilePage() {
 
   return (
     <div className="page">
+      <DoctorSidebar />
       <Header hideLogo={true} />
       <div className="page-wrapper">
         <div className="page-header d-print-none">
