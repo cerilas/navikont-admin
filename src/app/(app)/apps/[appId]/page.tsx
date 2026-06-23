@@ -18,33 +18,32 @@ export default async function AppDashboardPage({ params }: { params: Promise<{ a
     );
   }
 
-  // Fetch modules count
+  // ── Summary counts ──
   const modulesRes = await db.query('SELECT COUNT(*) FROM content_modules WHERE app_id = $1 AND deleted_at IS NULL', [appId]);
   const moduleCount = modulesRes.rows[0].count;
 
-  // Fetch patients count
   const patientsRes = await db.query('SELECT COUNT(*) FROM patient_app_enrollments WHERE app_id = $1', [appId]);
-  const patientCount = patientsRes.rows[0].count;
+  const totalPatients = parseInt(patientsRes.rows[0].count, 10);
 
-  // Fetch doctors count
+  const activePatientsRes = await db.query("SELECT COUNT(*) FROM patient_app_enrollments WHERE app_id = $1 AND status = 'active'", [appId]);
+  const activePatients = parseInt(activePatientsRes.rows[0].count, 10);
+
   const doctorsRes = await db.query('SELECT COUNT(DISTINCT doctor_user_id) FROM patient_app_enrollments WHERE app_id = $1 AND doctor_user_id IS NOT NULL', [appId]);
   const doctorCount = doctorsRes.rows[0].count;
 
-  // Fetch automation rules status
   const rulesRes = await db.query("SELECT COUNT(*) FROM core_rules WHERE target_type = $1 AND target_id = $2 AND rule_type = 'journey_assignment' AND is_active = true", ['app', appId]);
   const hasAutomation = parseInt(rulesRes.rows[0].count) > 0;
 
-  // --- NEW STATS DATA FETCHING ---
-  // 1. Enrollments over time (last 6 months)
+  // ── Enrollments over time (last 12 months) ──
   const enrollmentsOverTimeRes = await db.query(`
     SELECT TO_CHAR(created_at, 'YYYY-MM') as month, COUNT(*) as count
     FROM patient_app_enrollments
-    WHERE app_id = $1 AND created_at >= NOW() - INTERVAL '6 months'
+    WHERE app_id = $1 AND created_at >= NOW() - INTERVAL '12 months'
     GROUP BY month
     ORDER BY month ASC
   `, [appId]);
 
-  // 2. Top conditions
+  // ── Top conditions / diseases ──
   const topConditionsRes = await db.query(`
     SELECT md.name, COUNT(*) as count
     FROM patient_diseases pd
@@ -53,42 +52,69 @@ export default async function AppDashboardPage({ params }: { params: Promise<{ a
     WHERE pae.app_id = $1
     GROUP BY md.name
     ORDER BY count DESC
-    LIMIT 5
+    LIMIT 8
   `, [appId]);
 
-  // 3. Activities: Notifications sent
-  const notificationsRes = await db.query(`
-    SELECT COUNT(*) FROM patient_notifications
+  // ── Notification stats by status ──
+  const notificationStatsRes = await db.query(`
+    SELECT status, COUNT(*) as count
+    FROM patient_notifications
     WHERE app_id = $1
+    GROUP BY status
   `, [appId]);
 
-  // Activities: Questionnaires and Checkins
-  const moduleProgressRes = await db.query(`
-    SELECT cmt.code as type, COUNT(*) as count
-    FROM patient_module_progress pmp
-    JOIN content_module_versions cmv ON cmv.id = pmp.module_version_id
-    JOIN content_modules cm ON cm.id = cmv.module_id
+  // ── Modules by type ──
+  const modulesByTypeRes = await db.query(`
+    SELECT cmt.name, cmt.code, COUNT(*) as count
+    FROM content_modules cm
     JOIN content_module_types cmt ON cmt.id = cm.module_type_id
-    WHERE pmp.app_id = $1
-    GROUP BY cmt.code
+    WHERE cm.app_id = $1 AND cm.deleted_at IS NULL
+    GROUP BY cmt.name, cmt.code
+    ORDER BY count DESC
   `, [appId]);
 
-  let questionnaires = 0;
-  let checkins = 0;
-  
-  for (const row of moduleProgressRes.rows) {
-    if (row.type === 'questionnaire') questionnaires = parseInt(row.count, 10);
-    if (row.type === 'checkin') checkins = parseInt(row.count, 10);
-  }
+  // ── Checkin submissions ──
+  const checkinRes = await db.query(`
+    SELECT COUNT(*) FROM patient_checkin_submissions pcs
+    JOIN patient_app_enrollments pae ON pae.id = pcs.enrollment_id
+    WHERE pae.app_id = $1
+  `, [appId]);
+  const checkinCount = parseInt(checkinRes.rows[0].count, 10);
+
+  // ── Questionnaire responses ──
+  const questionnaireRes = await db.query(`
+    SELECT COUNT(*) FROM patient_questionnaire_responses pqr
+    JOIN patient_app_enrollments pae ON pae.id = pqr.enrollment_id
+    WHERE pae.app_id = $1
+  `, [appId]);
+  const questionnaireCount = parseInt(questionnaireRes.rows[0].count, 10);
+
+  // ── Journey step count ──
+  const journeyStepRes = await db.query(`
+    SELECT COUNT(*) FROM content_journey_steps cjs
+    JOIN content_journeys cj ON cj.id = cjs.journey_id
+    WHERE cj.app_id = $1
+  `, [appId]);
+  const journeyStepCount = parseInt(journeyStepRes.rows[0].count, 10);
+
+  // ── Recently active patients (last 7 days) ──
+  const recentlyActiveRes = await db.query(`
+    SELECT COUNT(*) FROM patient_app_enrollments
+    WHERE app_id = $1 AND last_active_at >= NOW() - INTERVAL '7 days'
+  `, [appId]);
+  const recentlyActive = parseInt(recentlyActiveRes.rows[0].count, 10);
 
   const stats = {
     enrollmentsOverTime: enrollmentsOverTimeRes.rows,
     topConditions: topConditionsRes.rows,
-    activities: {
-      notifications: notificationsRes.rows[0].count,
-      questionnaires,
-      checkins
-    }
+    notificationStats: notificationStatsRes.rows,
+    modulesByType: modulesByTypeRes.rows,
+    checkinCount,
+    questionnaireCount,
+    journeyStepCount,
+    activePatients,
+    totalPatients,
+    recentlyActive,
   };
 
   return (
@@ -98,10 +124,10 @@ export default async function AppDashboardPage({ params }: { params: Promise<{ a
           <div className="row g-2 align-items-center">
             <div className="col">
               <h2 className="page-title">
-                {app.name} Ana Paneli
+                {app.name} — İstatistikler
               </h2>
               <div className="text-muted mt-1">
-                Versiyon: {app.current_version_id || 'Taslak'}
+                Uygulamanın genel performansı ve hasta etkileşim verileri
               </div>
             </div>
           </div>
@@ -110,7 +136,8 @@ export default async function AppDashboardPage({ params }: { params: Promise<{ a
 
       <div className="page-body">
         <div className="container-xl">
-          <div className="row row-deck row-cards mt-3">
+          {/* Top-level summary cards */}
+          <div className="row row-deck row-cards">
             <div className="col-sm-6 col-lg-3">
               <div className="card">
                 <div className="card-body">
@@ -131,7 +158,7 @@ export default async function AppDashboardPage({ params }: { params: Promise<{ a
                   <div className="d-flex align-items-center">
                     <div className="subheader">Kayıtlı Hasta</div>
                   </div>
-                  <div className="h1 mb-3">{patientCount}</div>
+                  <div className="h1 mb-3">{totalPatients}</div>
                   <div className="d-flex mb-2">
                     <div>Bu uygulamayı kullanan hastalar</div>
                   </div>
@@ -172,9 +199,9 @@ export default async function AppDashboardPage({ params }: { params: Promise<{ a
                 </div>
               </div>
             </div>
-
           </div>
 
+          {/* Charts & detailed stats */}
           <AppDashboardClient stats={stats} />
         </div>
       </div>
