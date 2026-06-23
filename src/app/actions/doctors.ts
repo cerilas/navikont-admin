@@ -94,7 +94,7 @@ export async function createDoctor(prevState: any, formData: FormData) {
   const full_name = formData.get('full_name')?.toString();
   const email = formData.get('email')?.toString();
   const phone = formData.get('phone')?.toString() || null;
-  const app_id = formData.get('app_id')?.toString();
+  const app_ids = formData.getAll('app_ids'); // Change here
   const institution = formData.get('institution')?.toString() || null;
   const specialty = formData.get('specialty')?.toString() || null;
   const address = formData.get('address')?.toString() || null;
@@ -123,8 +123,10 @@ export async function createDoctor(prevState: any, formData: FormData) {
       VALUES ($1, $2, $3, $4, $5, 'doctor', 'active', $6, $7)
     `, [id, full_name, email, phone, password_hash, reset_token, reset_token_expires]);
 
-    if (app_id) {
-      await db.query(`INSERT INTO doctor_apps (doctor_user_id, app_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [id, app_id]);
+    if (app_ids && app_ids.length > 0) {
+      for (const appId of app_ids) {
+        await db.query(`INSERT INTO doctor_apps (doctor_user_id, app_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [id, appId.toString()]);
+      }
     }
 
     await db.query(`
@@ -171,7 +173,7 @@ export async function updateDoctor(prevState: any, formData: FormData) {
   const email = formData.get('email')?.toString();
   const phone = formData.get('phone')?.toString() || null;
   const status = formData.get('status')?.toString();
-  const app_id = formData.get('app_id')?.toString();
+  const app_ids = formData.getAll('app_ids'); // Change here
   const institution = formData.get('institution')?.toString() || null;
   const specialty = formData.get('specialty')?.toString() || null;
   const address = formData.get('address')?.toString() || null;
@@ -195,8 +197,11 @@ export async function updateDoctor(prevState: any, formData: FormData) {
     `, [full_name, email, phone, status || 'active', id]);
 
     await db.query(`DELETE FROM doctor_apps WHERE doctor_user_id = $1`, [id]);
-    if (app_id) {
-      await db.query(`INSERT INTO doctor_apps (doctor_user_id, app_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [id, app_id]);
+    
+    if (app_ids && app_ids.length > 0) {
+      for (const appId of app_ids) {
+        await db.query(`INSERT INTO doctor_apps (doctor_user_id, app_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [id, appId.toString()]);
+      }
     }
 
     await db.query(`

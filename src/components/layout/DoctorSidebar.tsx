@@ -1,7 +1,19 @@
 import Link from 'next/link';
+import { getSession } from '@/lib/auth';
+import db from '@/lib/db';
 
-export default function DoctorSidebar({ appId }: { appId?: string }) {
+export default async function DoctorSidebar({ appId }: { appId?: string }) {
   const basePath = appId ? `/dr/apps/${appId}` : '';
+  const session = await getSession();
+  let showAppsButton = true;
+
+  if (session?.user_type === 'doctor') {
+    const appsRes = await db.query('SELECT COUNT(*) FROM doctor_apps WHERE doctor_user_id = $1', [session.id]);
+    const count = parseInt(appsRes.rows[0].count, 10);
+    if (count <= 1) {
+      showAppsButton = false;
+    }
+  }
 
   return (
     <aside className="navbar navbar-vertical navbar-expand-lg" data-bs-theme="light">
@@ -16,14 +28,16 @@ export default function DoctorSidebar({ appId }: { appId?: string }) {
         </h1>
         <div className="collapse navbar-collapse" id="sidebar-menu">
           <ul className="navbar-nav pt-lg-3">
-            <li className="nav-item">
-              <Link className="nav-link" href="/dr">
-                <span className="nav-link-icon d-md-none d-lg-inline-block">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M9 11l-4 4l4 4m-4 -4h11a4 4 0 0 0 0 -8h-1" /></svg>
-                </span>
-                <span className="nav-link-title">Uygulamalara Dön</span>
-              </Link>
-            </li>
+            {showAppsButton && (
+              <li className="nav-item">
+                <Link className="nav-link" href="/dr">
+                  <span className="nav-link-icon d-md-none d-lg-inline-block">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M9 11l-4 4l4 4m-4 -4h11a4 4 0 0 0 0 -8h-1" /></svg>
+                  </span>
+                  <span className="nav-link-title">Uygulamalara Dön</span>
+                </Link>
+              </li>
+            )}
             
             {appId && (
               <>
