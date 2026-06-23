@@ -1,6 +1,7 @@
 import ProfileClient from '@/components/profile/ProfileClient';
 import { getProfile } from '@/app/actions/profile';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,10 @@ export default async function AdminProfilePage() {
         <div className="container-xl">
           <div className="row g-2 align-items-center">
             <div className="col">
-              <h2 className="page-title">
+              <div className="page-pretitle">
+                <Link href="/" className="text-muted">← Ana Sayfaya Dön</Link>
+              </div>
+              <h2 className="page-title mt-1">
                 Profilim
               </h2>
             </div>
