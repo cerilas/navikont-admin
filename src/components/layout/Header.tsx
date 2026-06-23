@@ -41,6 +41,8 @@ export default async function Header({ hideLogo = false }: { hideLogo?: boolean 
                 <>
                   <Link href="/settings/diseases" className="dropdown-item">Hastalık Yönetimi</Link>
                   <Link href="/settings/doctors" className="dropdown-item">Doktor Yönetimi</Link>
+                  <Link href="/support-requests" className="dropdown-item">Doktor Talepleri</Link>
+                  <Link href="/settings/support" className="dropdown-item">Destek Ayarları</Link>
                 </>
               )}
               <div className="dropdown-divider"></div>
