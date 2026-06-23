@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { getSession } from '@/lib/auth';
 import { sendSms } from '@/lib/sms';
-import { sendMail } from '@/lib/mail';
+import { sendMail, getHtmlEmailTemplate } from '@/lib/mail';
 import { getBaseUrl } from '@/lib/url';
 
 export async function invitePatientToApp(prevState: any, formData: FormData) {
@@ -93,10 +93,20 @@ export async function invitePatientToApp(prevState: any, formData: FormData) {
     const resetLink = `${baseUrl}/reset-password?token=${token}`;
     const messageContent = `Hesabınız ${appName} uygulamasında oluşturulmuştur. Şifrenizi belirlemek için: ${resetLink}`;
 
+    const emailHtml = getHtmlEmailTemplate(
+      `${appName} Uygulamasına Davet Edildiniz`,
+      `<p style="font-size: 16px; color: #334155;">Merhaba <strong>${fullName}</strong>,</p>
+       <p style="font-size: 16px; color: #334155;">Hesabınız başarıyla oluşturulmuştur. Sisteme giriş yapabilmek ve profilinizi tamamlayabilmek için lütfen öncelikle kendi güvenli şifrenizi belirleyin.</p>
+       <p style="font-size: 16px; color: #334155;">Aşağıdaki butona tıklayarak şifre belirleme işleminizi gerçekleştirebilirsiniz:</p>`,
+      'Şifremi Belirle',
+      resetLink,
+      appName
+    );
+
     await sendMail({
       to: email,
       subject: `${appName} Uygulamasına Davet Edildiniz`,
-      html: `<p>Merhaba ${fullName},</p><p>Hesabınız <strong>${appName}</strong> uygulamasında oluşturulmuştur.</p><p><a href="${resetLink}">Şifrenizi belirlemek için tıklayın</a></p>`
+      html: emailHtml
     });
 
     await sendSms({
