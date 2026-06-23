@@ -7,7 +7,7 @@ import { sendPasswordResetEmail, sendPasswordResetSMS } from '@/app/actions/auth
 import EditPatientModal from './EditPatientModal';
 import Swal from 'sweetalert2';
 
-export default function PatientDetailClient({ patient, journeys, doctors = [], allDiseases = [], progressLogs = [], unassignedInfo = null }: { patient: any, journeys: any[], doctors?: any[], allDiseases?: any[], progressLogs?: any[], unassignedInfo?: any }) {
+export default function PatientDetailClient({ patient, journeys, doctors = [], allDiseases = [], progressLogs = [], unassignedInfo = null, auditLogs = [] }: { patient: any, journeys: any[], doctors?: any[], allDiseases?: any[], progressLogs?: any[], unassignedInfo?: any, auditLogs?: any[] }) {
   const params = useParams();
   const appId = params.appId as string;
   const [activeTab, setActiveTab] = useState('overview');
@@ -250,6 +250,14 @@ export default function PatientDetailClient({ patient, journeys, doctors = [], a
                 onClick={() => setActiveTab('health')}
               >
                 Sağlık Verileri
+              </button>
+            </li>
+            <li className="nav-item">
+              <button 
+                className={`nav-link ${activeTab === 'audit' ? 'active' : ''}`} 
+                onClick={() => setActiveTab('audit')}
+              >
+                Geçmiş / Loglar
               </button>
             </li>
           </ul>
@@ -592,6 +600,77 @@ export default function PatientDetailClient({ patient, journeys, doctors = [], a
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'audit' && (
+            <div>
+              <h3 className="card-title mb-4">Profil Değişiklik Geçmişi</h3>
+              {auditLogs.length > 0 ? (
+                <div className="timeline">
+                  {auditLogs.map((log: any) => {
+                    const oldData = typeof log.old_data === 'string' ? JSON.parse(log.old_data) : log.old_data;
+                    const newData = typeof log.new_data === 'string' ? JSON.parse(log.new_data) : log.new_data;
+                    
+                    const changes: any[] = [];
+                    if (newData) {
+                      Object.keys(newData).forEach(key => {
+                        const oldVal = oldData?.[key];
+                        const newVal = newData[key];
+                        if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+                          changes.push({ key, oldVal, newVal });
+                        }
+                      });
+                    }
+
+                    return (
+                      <div className="timeline-event" key={log.id}>
+                        <div className="timeline-event-icon bg-blue-lt">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 8l0 4l2 2" /><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5" /></svg>
+                        </div>
+                        <div className="card timeline-event-card">
+                          <div className="card-body">
+                            <div className="text-muted float-end text-xs">{formatDate(log.created_at)} {new Date(log.created_at).toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})}</div>
+                            <h4>
+                              {log.actor_role === 'patient' ? (
+                                <span className="badge bg-green-lt">Hasta Tarafından Değiştirildi</span>
+                              ) : log.actor_role === 'admin' ? (
+                                <span className="badge bg-purple-lt">Admin Tarafından Değiştirildi ({log.actor_name})</span>
+                              ) : log.actor_role === 'doctor' ? (
+                                <span className="badge bg-blue-lt">Doktor Tarafından Değiştirildi ({log.actor_name})</span>
+                              ) : (
+                                <span className="badge bg-secondary-lt">Sistem Tarafından Değiştirildi</span>
+                              )}
+                            </h4>
+                            <div className="text-secondary mt-2">
+                              {changes.length > 0 ? (
+                                <ul className="list-unstyled mb-0">
+                                  {changes.map((c, i) => (
+                                    <li key={i} className="mb-1">
+                                      <strong>{c.key === 'birth_date' ? 'Doğum Tarihi' : c.key === 'gender' ? 'Cinsiyet' : c.key === 'height_cm' ? 'Boy (cm)' : c.key === 'weight_kg' ? 'Kilo (kg)' : c.key === 'blood_type' ? 'Kan Grubu' : c.key === 'disease_ids' ? 'Hastalıklar' : c.key}:</strong>{' '}
+                                      <span className="text-danger text-decoration-line-through">{Array.isArray(c.oldVal) ? c.oldVal.join(', ') || 'Yok' : c.oldVal || 'Yok'}</span>
+                                      {' '}
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="icon text-muted mx-1" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0" /><path d="M15 16l4 -4" /><path d="M15 8l4 4" /></svg>
+                                      {' '}
+                                      <span className="text-success fw-bold">{Array.isArray(c.newVal) ? c.newVal.join(', ') || 'Yok' : c.newVal || 'Yok'}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <span className="text-muted">Detaylı değişiklik verisi bulunamadı.</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="alert alert-secondary">
+                  Bu hastanın profiliyle ilgili herhangi bir değişiklik geçmişi (log) bulunmamaktadır.
+                </div>
+              )}
             </div>
           )}
         </div>

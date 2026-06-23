@@ -80,6 +80,15 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
   `, [enrollmentId, patient.user_id, appId]);
   const progressLogs = progressRes.rows;
 
+  const auditRes = await db.query(`
+    SELECT a.*, u.full_name as actor_name, u.user_type as actor_role
+    FROM audit_logs a
+    JOIN core_users u ON a.actor_user_id = u.id
+    WHERE a.entity_type = 'patient' AND a.entity_id = $1
+    ORDER BY a.created_at DESC
+  `, [patient.user_id]);
+  const auditLogs = auditRes.rows;
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'invited': return <span className="badge bg-secondary-lt rounded-pill px-3 py-1 fs-5 fw-medium">Davet Edildi</span>;
@@ -208,6 +217,7 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
           allDiseases={allDiseases}
           progressLogs={progressLogs} 
           unassignedInfo={unassignedInfo} 
+          auditLogs={auditLogs}
         />
             </div>
 

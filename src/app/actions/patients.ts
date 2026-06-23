@@ -3,6 +3,7 @@
 import db from '@/lib/db';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import { getSession } from '@/lib/auth';
 
 export async function invitePatientToApp(prevState: any, formData: FormData) {
   const appId = formData.get('appId')?.toString();
@@ -136,8 +137,18 @@ export async function updatePatientProfile(prevState: any, formData: FormData) {
     `, [journeyId, startDate, enrollmentId]);
 
     // 3. Upsert patient_profiles
-    const profileRes = await db.query(`SELECT id FROM patient_profiles WHERE user_id = $1`, [userId]);
+    const profileRes = await db.query(`SELECT * FROM patient_profiles WHERE user_id = $1`, [userId]);
+    const oldDiseasesRes = await db.query(`SELECT disease_id FROM patient_diseases WHERE patient_user_id = $1`, [userId]);
     
+    let oldData: any = {};
+    if (profileRes.rows.length > 0) {
+      oldData = { ...profileRes.rows[0] };
+      if (oldData.birth_date) {
+        oldData.birth_date = new Date(oldData.birth_date).toISOString().split('T')[0];
+      }
+    }
+    oldData.disease_ids = oldDiseasesRes.rows.map(r => r.disease_id).sort();
+
     if (profileRes.rows.length > 0) {
       await db.query(`
         UPDATE patient_profiles 
@@ -156,6 +167,37 @@ export async function updatePatientProfile(prevState: any, formData: FormData) {
     for (const dId of diseaseIds) {
       if (dId) {
         await db.query(`INSERT INTO patient_diseases (patient_user_id, disease_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [userId, dId]);
+      }
+    }
+
+    // 5. Audit Logging
+    const session = await getSession();
+    const adminId = session?.userId;
+    if (adminId) {
+      const newData = {
+        birth_date: birthDate || null,
+        gender: gender || null,
+        height_cm: heightCm || null,
+        weight_kg: weightKg || null,
+        blood_type: bloodType || null,
+        disease_ids: Array.isArray(diseaseIds) ? [...diseaseIds].sort() : []
+      };
+      
+      // Compare specific fields that matter for the profile
+      const oldCompare = {
+        birth_date: oldData.birth_date || null,
+        gender: oldData.gender || null,
+        height_cm: oldData.height_cm || null,
+        weight_kg: oldData.weight_kg || null,
+        blood_type: oldData.blood_type || null,
+        disease_ids: oldData.disease_ids || []
+      };
+
+      if (JSON.stringify(oldCompare) !== JSON.stringify(newData)) {
+        await db.query(`
+          INSERT INTO audit_logs (id, actor_user_id, action, entity_type, entity_id, old_data, new_data, created_at)
+          VALUES (gen_random_uuid(), $1, 'update_profile', 'patient', $2, $3, $4, NOW())
+        `, [adminId, userId, JSON.stringify(oldCompare), JSON.stringify(newData)]);
       }
     }
 
