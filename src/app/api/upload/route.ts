@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const path = join(uploadDir, filename);
     await writeFile(path, buffer);
 
-    const fileUrl = `/uploads/avatars/${filename}`;
+    const fileUrl = `/api/uploads/avatars/${filename}`;
 
     return NextResponse.json({ success: true, url: fileUrl });
   } catch (e: any) {
