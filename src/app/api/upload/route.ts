@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import crypto from 'crypto';
 import { getSession } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
