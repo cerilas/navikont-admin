@@ -5,6 +5,7 @@ import { getBaseUrl } from '@/lib/url';
 import PatientsSearch from '@/app/(app)/apps/[appId]/patients/PatientsSearch';
 import Pagination from '@/app/(app)/apps/[appId]/patients/Pagination';
 import { getDoctors } from '@/app/actions/doctors';
+import { getSession } from '@/lib/auth';
 
 export default async function PatientsPage({ 
   params,
@@ -43,6 +44,7 @@ export default async function PatientsPage({
 
   // 2.6 Fetch doctors for assignment
   const doctors = await getDoctors();
+  const session = await getSession();
 
   // 3. Count total patients for pagination
   let countQuery = `
@@ -127,7 +129,7 @@ export default async function PatientsPage({
             </div>
             <div className="col-auto ms-auto d-print-none">
               <div className="btn-list">
-                <InvitePatientForm appId={appId} journeys={journeys} doctors={doctors} />
+                <InvitePatientForm appId={appId} journeys={journeys} doctors={doctors} currentUserId={session?.id} />
               </div>
             </div>
           </div>

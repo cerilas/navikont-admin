@@ -14,9 +14,9 @@ function SubmitButton() {
   );
 }
 
-export default function InvitePatientForm({ appId, journeys, doctors = [] }: { appId: string, journeys: any[], doctors?: any[] }) {
+export default function InvitePatientForm({ appId, journeys, doctors = [], currentUserId = '' }: { appId: string, journeys: any[], doctors?: any[], currentUserId?: string }) {
   const [selectedJourney, setSelectedJourney] = useState<string>('');
-  const [selectedDoctor, setSelectedDoctor] = useState<string>('');
+  const [selectedDoctor, setSelectedDoctor] = useState<string>(currentUserId);
   const [state, formAction] = useActionState(async (prevState: any, formData: FormData) => {
     const res = await invitePatientToApp(prevState, formData);
     if (res?.success) {
