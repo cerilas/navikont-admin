@@ -66,7 +66,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                     <th>Doktor Adı</th>
                     <th>E-posta</th>
                     <th>Telefon</th>
-                    <th>Uygulamalar</th>
+                    <th>Uygulama</th>
                     <th>Durum</th>
                     <th className="w-1"></th>
                   </tr>

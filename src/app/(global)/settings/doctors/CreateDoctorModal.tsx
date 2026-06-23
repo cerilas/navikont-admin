@@ -67,21 +67,14 @@ export default function CreateDoctorModal({ apps }: { apps: any[] }) {
             </div>
 
             <div className="mb-3">
-              <label className="form-label">Atanan Uygulamalar</label>
+              <label className="form-label required">Atanan Uygulama</label>
               {apps.length > 0 ? (
-                <div className="form-selectgroup form-selectgroup-pills">
+                <select className="form-select" name="app_id" required>
+                  <option value="">-- Uygulama Seçin --</option>
                   {apps.map((a: any) => (
-                    <label key={a.id} className="form-selectgroup-item">
-                      <input 
-                        type="checkbox" 
-                        name="app_ids" 
-                        value={a.id} 
-                        className="form-selectgroup-input" 
-                      />
-                      <span className="form-selectgroup-label">{a.name}</span>
-                    </label>
+                    <option key={a.id} value={a.id}>{a.name}</option>
                   ))}
-                </div>
+                </select>
               ) : (
                 <div className="text-muted small">Sistemde uygulama bulunamadı.</div>
               )}
