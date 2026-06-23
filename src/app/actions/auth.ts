@@ -200,6 +200,8 @@ export async function login(prevState: any, formData: FormData) {
 
   if (!email || !password) return { error: 'E-posta ve şifre zorunludur.' };
 
+  let redirectUrl = '/';
+
   try {
     const res = await db.query('SELECT id, password_hash, full_name, user_type FROM core_users WHERE email = $1', [email]);
     if (res.rows.length === 0) return { error: 'Geçersiz e-posta veya şifre.' };
@@ -217,12 +219,14 @@ export async function login(prevState: any, formData: FormData) {
     
     const cookieStore = await cookies();
     cookieStore.set('session', session, { expires, httpOnly: true, sameSite: 'lax', path: '/' });
+    
+    redirectUrl = user.user_type === 'doctor' ? '/dr' : '/';
   } catch (error) {
     console.error('Login error:', error);
     return { error: 'Giriş yapılırken bir hata oluştu.' };
   }
 
-  redirect('/');
+  redirect(redirectUrl);
 }
 
 export async function logout() {

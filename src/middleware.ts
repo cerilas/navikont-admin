@@ -23,7 +23,23 @@ export default async function middleware(req: NextRequest) {
   }
 
   if (isPublicRoute && session && path !== '/reset-password') {
-    return NextResponse.redirect(new URL('/', req.nextUrl));
+    if (session.user_type === 'doctor') {
+      return NextResponse.redirect(new URL('/dr', req.nextUrl));
+    } else {
+      return NextResponse.redirect(new URL('/', req.nextUrl));
+    }
+  }
+
+  // Doctor route protection
+  if (path.startsWith('/dr')) {
+    if (session && session.user_type !== 'doctor') {
+      return NextResponse.redirect(new URL('/', req.nextUrl));
+    }
+  } else if (!isPublicRoute) {
+    // Admin route protection (everything else except public routes)
+    if (session && session.user_type === 'doctor') {
+      return NextResponse.redirect(new URL('/dr', req.nextUrl));
+    }
   }
 
   return NextResponse.next();

@@ -147,7 +147,8 @@ export default function PatientDetailClient({ patient, journeys, doctors = [], a
     }).then((result) => {
       if (result.isConfirmed) {
         Swal.fire('Silindi!', 'Hasta sistemden başarıyla silindi.', 'success').then(() => {
-          window.location.href = `/apps/${appId}/patients`;
+          const basePath = window.location.pathname.startsWith('/dr') ? `/dr/apps/${appId}/patients` : `/apps/${appId}/patients`;
+          window.location.href = basePath;
         });
       }
     });
