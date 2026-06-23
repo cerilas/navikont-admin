@@ -179,11 +179,11 @@ export async function resetPassword(prevState: any, formData: FormData) {
       return { error: 'Bu sıfırlama bağlantısının süresi dolmuş.' };
     }
 
-    // Update password
+    // Update password and set status to active
     const hashedPassword = await bcrypt.hash(password, 10);
     await db.query(`
       UPDATE core_users 
-      SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, updated_at = NOW()
+      SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, status = 'active', updated_at = NOW()
       WHERE id = $2
     `, [hashedPassword, user.id]);
 
