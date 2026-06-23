@@ -36,45 +36,19 @@ export async function invitePatientToApp(prevState: any, formData: FormData) {
     const appVersionId = versionRes.rows[0].id;
 
     // 2. Check if user exists in core_users
-    const userRes = await db.query(`SELECT id FROM core_users WHERE email = $1`, [email]);
+    const userRes = await db.query(`SELECT id, phone, full_name FROM core_users WHERE email = $1`, [email]);
     let patientUserId = '';
+    let actualPhone = phone;
 
     if (userRes.rows.length > 0) {
       patientUserId = userRes.rows[0].id;
+      actualPhone = userRes.rows[0].phone || phone;
     } else {
-      if (!phone) {
-        return { error: 'Yeni hastalar için telefon numarası zorunludur.' };
-      }
-      // Create new user
       patientUserId = crypto.randomUUID();
-      const tempHash = await bcrypt.hash(crypto.randomBytes(8).toString('hex'), 10);
-      const token = crypto.randomBytes(8).toString('hex');
-      const expires = new Date();
-      expires.setHours(expires.getHours() + 24);
-      
-      await db.query(`
-        INSERT INTO core_users (id, email, phone, full_name, user_type, status, password_hash, reset_token, reset_token_expires)
-        VALUES ($1, $2, $3, $4, 'patient', 'invited', $5, $6, $7)
-      `, [patientUserId, email, phone, fullName, tempHash, token, expires.toISOString()]);
+    }
 
-      // Construct reset link
-      const baseUrl = getBaseUrl();
-      const resetLink = `${baseUrl}/reset-password?token=${token}`;
-
-      const messageContent = `Hesabınız ${appName} uygulamasında oluşturulmuştur. Şifrenizi belirlemek için: ${resetLink}`;
-
-      // Send Email
-      await sendMail({
-        to: email,
-        subject: `${appName} Uygulamasına Davet Edildiniz`,
-        html: `<p>Merhaba ${fullName},</p><p>Hesabınız <strong>${appName}</strong> uygulamasında oluşturulmuştur.</p><p><a href="${resetLink}">Şifrenizi belirlemek için tıklayın</a></p>`
-      });
-
-      // Send SMS
-      await sendSms({
-        no: phone,
-        msg: messageContent
-      });
+    if (!actualPhone) {
+      return { error: 'Hasta daveti için geçerli bir telefon numarası bulunamadı.' };
     }
 
     // 3. Check if patient is already enrolled in this app
@@ -87,7 +61,26 @@ export async function invitePatientToApp(prevState: any, formData: FormData) {
       return { error: 'Bu hasta zaten bu uygulamaya kayıtlı veya davet edilmiş.' };
     }
 
-    // 4. Create enrollment
+    // 4. Update or Create User and Generate Reset Token
+    const token = crypto.randomBytes(8).toString('hex');
+    const expires = new Date();
+    expires.setHours(expires.getHours() + 24);
+
+    if (userRes.rows.length > 0) {
+      await db.query(`
+        UPDATE core_users 
+        SET reset_token = $1, reset_token_expires = $2, phone = COALESCE(phone, $3)
+        WHERE id = $4
+      `, [token, expires.toISOString(), phone, patientUserId]);
+    } else {
+      const tempHash = await bcrypt.hash(crypto.randomBytes(8).toString('hex'), 10);
+      await db.query(`
+        INSERT INTO core_users (id, email, phone, full_name, user_type, status, password_hash, reset_token, reset_token_expires)
+        VALUES ($1, $2, $3, $4, 'patient', 'invited', $5, $6, $7)
+      `, [patientUserId, email, phone, fullName, tempHash, token, expires.toISOString()]);
+    }
+
+    // 5. Create enrollment
     const enrollmentId = crypto.randomUUID();
     await db.query(`
       INSERT INTO patient_app_enrollments 
@@ -95,7 +88,23 @@ export async function invitePatientToApp(prevState: any, formData: FormData) {
       VALUES ($1, $2, $3, $4, $5, $6, 'invited', CURRENT_DATE)
     `, [enrollmentId, patientUserId, appId, appVersionId, journeyId || null, doctorId || null]);
 
-    return { success: true, message: 'Hasta başarıyla davet edildi.' };
+    // 6. Send Email and SMS
+    const baseUrl = getBaseUrl();
+    const resetLink = `${baseUrl}/reset-password?token=${token}`;
+    const messageContent = `Hesabınız ${appName} uygulamasında oluşturulmuştur. Şifrenizi belirlemek için: ${resetLink}`;
+
+    await sendMail({
+      to: email,
+      subject: `${appName} Uygulamasına Davet Edildiniz`,
+      html: `<p>Merhaba ${fullName},</p><p>Hesabınız <strong>${appName}</strong> uygulamasında oluşturulmuştur.</p><p><a href="${resetLink}">Şifrenizi belirlemek için tıklayın</a></p>`
+    });
+
+    await sendSms({
+      no: actualPhone,
+      msg: messageContent
+    });
+
+    return { success: true, message: 'Hasta başarıyla davet edildi ve bilgilendirme mesajları gönderildi.' };
   } catch (err: any) {
     console.error('Error inviting patient:', err);
     return { error: 'Hasta eklenirken bir hata oluştu.' };
