@@ -57,6 +57,12 @@ export default function InvitePatientForm({ appId, journeys, doctors = [] }: { a
               </div>
 
               <div className="mb-3">
+                <label className="form-label required">Telefon Numarası</label>
+                <input type="tel" className="form-control" name="phone" required placeholder="Örn: 5551234567" />
+                <small className="form-hint">Hesap şifresi oluşturma bağlantısı SMS ile iletilecektir.</small>
+              </div>
+
+              <div className="mb-3">
                 <label className="form-label">Sorumlu Doktor</label>
                 <select 
                   className="form-select" 

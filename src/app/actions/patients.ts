@@ -4,6 +4,9 @@ import db from '@/lib/db';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { getSession } from '@/lib/auth';
+import { sendSms } from '@/lib/sms';
+import { sendMail } from '@/lib/mail';
+import { getBaseUrl } from '@/lib/url';
 
 export async function invitePatientToApp(prevState: any, formData: FormData) {
   const appId = formData.get('appId')?.toString();
@@ -12,12 +15,17 @@ export async function invitePatientToApp(prevState: any, formData: FormData) {
   const journeyId = formData.get('journeyId') as string;
   const doctorId = formData.get('doctorId') as string;
 
+  const phone = formData.get('phone') as string;
+
   if (!appId || !fullName || !email) {
     return { error: 'Lütfen zorunlu alanları doldurun (Ad Soyad, E-posta).' };
   }
 
   try {
     // 1. Get the latest app_version_id for this app
+    const appRes = await db.query(`SELECT name FROM content_apps WHERE id = $1`, [appId]);
+    const appName = appRes.rows[0]?.name || 'Uygulama';
+
     const versionRes = await db.query(`
       SELECT id FROM content_app_versions WHERE app_id = $1 ORDER BY created_at DESC LIMIT 1
     `, [appId]);
@@ -34,15 +42,39 @@ export async function invitePatientToApp(prevState: any, formData: FormData) {
     if (userRes.rows.length > 0) {
       patientUserId = userRes.rows[0].id;
     } else {
+      if (!phone) {
+        return { error: 'Yeni hastalar için telefon numarası zorunludur.' };
+      }
       // Create new user
       patientUserId = crypto.randomUUID();
-      // Generate a random temp password hash since they are invited
       const tempHash = await bcrypt.hash(crypto.randomBytes(8).toString('hex'), 10);
+      const token = crypto.randomBytes(8).toString('hex');
+      const expires = new Date();
+      expires.setHours(expires.getHours() + 24);
       
       await db.query(`
-        INSERT INTO core_users (id, email, full_name, user_type, status, password_hash)
-        VALUES ($1, $2, $3, 'patient', 'invited', $4)
-      `, [patientUserId, email, fullName, tempHash]);
+        INSERT INTO core_users (id, email, phone, full_name, user_type, status, password_hash, reset_token, reset_token_expires)
+        VALUES ($1, $2, $3, $4, 'patient', 'invited', $5, $6, $7)
+      `, [patientUserId, email, phone, fullName, tempHash, token, expires.toISOString()]);
+
+      // Construct reset link
+      const baseUrl = getBaseUrl();
+      const resetLink = `${baseUrl}/reset-password?token=${token}`;
+
+      const messageContent = `Hesabınız ${appName} uygulamasında oluşturulmuştur. Şifrenizi belirlemek için: ${resetLink}`;
+
+      // Send Email
+      await sendMail({
+        to: email,
+        subject: `${appName} Uygulamasına Davet Edildiniz`,
+        html: `<p>Merhaba ${fullName},</p><p>Hesabınız <strong>${appName}</strong> uygulamasında oluşturulmuştur.</p><p><a href="${resetLink}">Şifrenizi belirlemek için tıklayın</a></p>`
+      });
+
+      // Send SMS
+      await sendSms({
+        no: phone,
+        msg: messageContent
+      });
     }
 
     // 3. Check if patient is already enrolled in this app
