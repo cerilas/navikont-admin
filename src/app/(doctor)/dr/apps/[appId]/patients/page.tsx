@@ -129,7 +129,7 @@ export default async function PatientsPage({
             </div>
             <div className="col-auto ms-auto d-print-none">
               <div className="btn-list">
-                <InvitePatientForm appId={appId} journeys={journeys} doctors={doctors} currentUserId={session?.id} />
+                <InvitePatientForm appId={appId} journeys={journeys} doctors={doctors} currentUserId={session?.id} isDoctorView={true} />
               </div>
             </div>
           </div>

@@ -14,7 +14,7 @@ function SubmitButton() {
   );
 }
 
-export default function InvitePatientForm({ appId, journeys, doctors = [], currentUserId = '' }: { appId: string, journeys: any[], doctors?: any[], currentUserId?: string }) {
+export default function InvitePatientForm({ appId, journeys, doctors = [], currentUserId = '', isDoctorView = false }: { appId: string, journeys: any[], doctors?: any[], currentUserId?: string, isDoctorView?: boolean }) {
   const [selectedJourney, setSelectedJourney] = useState<string>('');
   const [selectedDoctor, setSelectedDoctor] = useState<string>(currentUserId);
   const [state, formAction] = useActionState(async (prevState: any, formData: FormData) => {
@@ -64,18 +64,28 @@ export default function InvitePatientForm({ appId, journeys, doctors = [], curre
 
               <div className="mb-3">
                 <label className="form-label">Sorumlu Doktor</label>
-                <select 
-                  className="form-select" 
-                  name="doctorId" 
-                  value={selectedDoctor}
-                  onChange={(e) => setSelectedDoctor(e.target.value)}
-                >
-                  <option value="">-- Doktor Atanmasın --</option>
-                  {doctors.map(d => (
-                    <option key={d.id} value={d.id}>{d.full_name} ({d.email})</option>
-                  ))}
-                </select>
-                <small className="form-hint mt-1">İsterseniz hastaya özel bir doktor atayabilirsiniz.</small>
+                {isDoctorView ? (
+                  <>
+                    <input type="hidden" name="doctorId" value={currentUserId} />
+                    <input type="text" className="form-control" disabled value={doctors.find(d => d.id === currentUserId)?.full_name || 'Giriş yapan doktor'} />
+                    <small className="form-hint mt-1">Sorumlu doktor olarak otomatik atandınız.</small>
+                  </>
+                ) : (
+                  <>
+                    <select 
+                      className="form-select" 
+                      name="doctorId" 
+                      value={selectedDoctor}
+                      onChange={(e) => setSelectedDoctor(e.target.value)}
+                    >
+                      <option value="">-- Doktor Atanmasın --</option>
+                      {doctors.map(d => (
+                        <option key={d.id} value={d.id}>{d.full_name} ({d.email})</option>
+                      ))}
+                    </select>
+                    <small className="form-hint mt-1">İsterseniz hastaya özel bir doktor atayabilirsiniz.</small>
+                  </>
+                )}
               </div>
 
               <div className="mb-3">
