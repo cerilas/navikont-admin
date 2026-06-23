@@ -208,6 +208,10 @@ export async function login(prevState: any, formData: FormData) {
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) return { error: 'Geçersiz e-posta veya şifre.' };
 
+    if (user.user_type === 'patient') {
+      return { error: 'Bu panele giriş yetkiniz bulunmuyor. Hastalar sadece mobil uygulamayı kullanabilir.' };
+    }
+
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const session = await encrypt({ id: user.id, email, full_name: user.full_name, user_type: user.user_type });
     
