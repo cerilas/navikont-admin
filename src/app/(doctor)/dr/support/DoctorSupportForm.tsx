@@ -38,6 +38,10 @@ export default function DoctorSupportForm() {
         <label className="form-label required">Mesaj</label>
         <textarea className="form-control" name="message" rows={6} required placeholder="Nasıl yardımcı olabiliriz? Lütfen detayları paylaşın..."></textarea>
       </div>
+      <div className="mb-3">
+        <label className="form-label">Ek (Ekran Görüntüsü, PDF vb.)</label>
+        <input type="file" className="form-control" name="attachment" accept="image/*,.pdf,.doc,.docx" />
+      </div>
       <SubmitButton />
     </form>
   );

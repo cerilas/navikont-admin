@@ -8,6 +8,19 @@ export default function SupportRequestClient({ initialRequests }: { initialReque
   const [requests, setRequests] = useState(initialRequests);
 
   const handleShowDetails = (r: any) => {
+    let attachmentHtml = '';
+    if (r.attachment_url) {
+      attachmentHtml = `
+        <hr />
+        <div class="mt-3">
+          <strong>Ek Dosya:</strong><br />
+          <a href="${r.attachment_url}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+            Dosyayı Görüntüle / İndir
+          </a>
+        </div>
+      `;
+    }
+
     Swal.fire({
       title: r.subject,
       html: `
@@ -16,6 +29,7 @@ export default function SupportRequestClient({ initialRequests }: { initialReque
           <p><strong>Tarih:</strong> ${new Date(r.created_at).toLocaleString('tr-TR')}</p>
           <hr />
           <div style="white-space: pre-wrap; word-break: break-word;">${r.message}</div>
+          ${attachmentHtml}
         </div>
       `,
       confirmButtonText: 'Kapat',
