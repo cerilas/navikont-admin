@@ -172,7 +172,7 @@ export async function updatePatientProfile(prevState: any, formData: FormData) {
 
     // 5. Audit Logging
     const session = await getSession();
-    const adminId = session?.userId;
+    const adminId = session?.id;
     if (adminId) {
       const newData = {
         birth_date: birthDate || null,
