@@ -7,6 +7,22 @@ import Swal from 'sweetalert2';
 export default function SupportRequestClient({ initialRequests }: { initialRequests: any[] }) {
   const [requests, setRequests] = useState(initialRequests);
 
+  const handleShowDetails = (r: any) => {
+    Swal.fire({
+      title: r.subject,
+      html: `
+        <div class="text-start">
+          <p><strong>Doktor:</strong> ${r.doctor_name} (${r.doctor_email})</p>
+          <p><strong>Tarih:</strong> ${new Date(r.created_at).toLocaleString('tr-TR')}</p>
+          <hr />
+          <div style="white-space: pre-wrap; word-break: break-word;">${r.message}</div>
+        </div>
+      `,
+      confirmButtonText: 'Kapat',
+      width: '600px'
+    });
+  };
+
   const handleResolve = async (id: string) => {
     const result = await Swal.fire({
       title: 'Talebi kapatmak istediğinize emin misiniz?',
@@ -72,14 +88,22 @@ export default function SupportRequestClient({ initialRequests }: { initialReque
                     )}
                   </td>
                   <td>
-                    {r.status === 'new' && (
+                    <div className="btn-list flex-nowrap">
                       <button 
-                        className="btn btn-sm btn-outline-success" 
-                        onClick={() => handleResolve(r.id)}
+                        className="btn btn-sm btn-outline-primary" 
+                        onClick={() => handleShowDetails(r)}
                       >
-                        Çözüldü İşaretle
+                        Detay
                       </button>
-                    )}
+                      {r.status === 'new' && (
+                        <button 
+                          className="btn btn-sm btn-outline-success" 
+                          onClick={() => handleResolve(r.id)}
+                        >
+                          Çözüldü
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
