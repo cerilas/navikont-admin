@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createApp } from '@/app/actions/apps';
 import SelectInput from '@/components/ui/SelectInput';
+import AppLogoUploader from '@/components/apps/AppLogoUploader';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -26,6 +27,8 @@ export default function AppForm({ diseases }: { diseases: any[] }) {
           </div>
         )}
         
+        <AppLogoUploader name="logo_url" />
+
         <div className="mb-3">
           <label className="form-label required">Uygulama Adı</label>
           <input type="text" className="form-control" name="name" placeholder="Örn: Hipertansiyon Uygulaması v1" required />

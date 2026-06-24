@@ -9,6 +9,7 @@ export async function createApp(prevState: any, formData: FormData) {
   const slug = formData.get('slug')?.toString();
   const disease_id = formData.get('disease_id')?.toString();
   const short_description = formData.get('short_description')?.toString();
+  const logo_url = formData.get('logo_url')?.toString();
 
   if (!name || !slug || !disease_id) {
     return { error: 'Lütfen zorunlu alanları (Ad, Slug, Hastalık) doldurunuz.' };
@@ -23,10 +24,10 @@ export async function createApp(prevState: any, formData: FormData) {
   try {
     const newId = crypto.randomUUID();
     const insertRes = await db.query(`
-      INSERT INTO content_apps (id, name, slug, disease_id, short_description, status)
-      VALUES ($1, $2, $3, $4, $5, 'draft')
+      INSERT INTO content_apps (id, name, slug, disease_id, short_description, logo_url, status)
+      VALUES ($1, $2, $3, $4, $5, $6, 'draft')
       RETURNING id
-    `, [newId, name, slug, disease_id, short_description || null]);
+    `, [newId, name, slug, disease_id, short_description || null, logo_url || null]);
 
     // Will redirect to the newly created app dashboard
     const newAppId = insertRes.rows[0].id;
@@ -42,7 +43,7 @@ export async function createApp(prevState: any, formData: FormData) {
 export async function updateAppBasicInfo(prevState: any, formData: FormData) {
   const appId = formData.get('appId')?.toString();
   const name = formData.get('name')?.toString();
-  const icon_emoji = formData.get('icon_emoji')?.toString();
+  const logo_url = formData.get('logo_url')?.toString();
   const motto = formData.get('motto')?.toString();
   const short_description = formData.get('short_description')?.toString();
   const long_description = formData.get('long_description')?.toString();
@@ -61,7 +62,7 @@ export async function updateAppBasicInfo(prevState: any, formData: FormData) {
       UPDATE content_apps 
       SET 
         name = $1, 
-        icon_emoji = $2, 
+        logo_url = $2, 
         motto = $3, 
         short_description = $4, 
         long_description = $5,
@@ -74,7 +75,7 @@ export async function updateAppBasicInfo(prevState: any, formData: FormData) {
       WHERE id = $11
     `, [
       name, 
-      icon_emoji || null, 
+      logo_url || null, 
       motto || null, 
       short_description || null, 
       long_description || null, 

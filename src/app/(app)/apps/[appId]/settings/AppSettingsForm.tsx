@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { updateAppBasicInfo } from '@/app/actions/apps';
 import Swal from 'sweetalert2';
+import AppLogoUploader from '@/components/apps/AppLogoUploader';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -72,11 +73,7 @@ export default function AppSettingsForm({ app, diseases = [], doctors = [] }: { 
             <input type="text" className="form-control" name="name" defaultValue={app.name} required />
           </div>
           <div className="col-md-6 mb-3">
-            <label className="form-label">Temsili İkon (Emoji)</label>
-            <div className="input-group">
-              <span className="input-group-text">{app.icon_emoji || '📱'}</span>
-              <input type="text" className="form-control" name="icon_emoji" defaultValue={app.icon_emoji || ''} placeholder="Örn: 🫀, 🧠, 🏃‍♂️" maxLength={5} />
-            </div>
+            <AppLogoUploader name="logo_url" defaultValue={app.logo_url || ''} />
           </div>
         </div>
 

@@ -113,7 +113,17 @@ export default async function AppSelectionPage() {
                       
                       {/* Header */}
                       <div className="d-flex align-items-start gap-3 mb-3">
-                        <div style={{ fontSize: '2.5rem', lineHeight: 1 }}>{app.icon_emoji || '📱'}</div>
+                        <div 
+                          className="bg-light border shadow-sm flex-shrink-0" 
+                          style={{ 
+                            width: '48px', 
+                            height: '48px', 
+                            borderRadius: '12px',
+                            backgroundImage: app.logo_url ? `url(${app.logo_url})` : 'url(/placeholder-app.svg)',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                          }}
+                        />
                         <div className="flex-fill overflow-hidden">
                           <h3 className="card-title mb-1 text-truncate">
                             <Link href={`/apps/${app.id}`} className="text-reset">{app.name}</Link>
