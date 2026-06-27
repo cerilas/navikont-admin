@@ -11,8 +11,8 @@ import Header from "@/components/layout/Header";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Navikont Admin",
-  description: "DiGA Platform Super Admin Panel",
+  title: "DiGA Base",
+  description: "DiGA Platform Management",
 };
 
 export default function RootLayout({
