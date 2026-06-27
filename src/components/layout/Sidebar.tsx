@@ -85,8 +85,24 @@ export default function Sidebar({ appId }: { appId?: string }) {
                 <span className="nav-link-title">Bildirim Şablonları</span>
               </Link>
             </li>
+            <li className="nav-item">
+              <Link className="nav-link" href={`${basePath}/faqs`}>
+                <span className="nav-link-icon d-md-none d-lg-inline-block">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9a9 8 0 1 1 3.4 2.9l-4.7 1"/><line x1="12" y1="12" x2="12" y2="12.01"/><path d="M12 8a2 2 0 0 1 2 2c0 1 -1.5 1.5 -1.5 2"/></svg>
+                </span>
+                <span className="nav-link-title">S.S.S. Yönetimi</span>
+              </Link>
+            </li>
+            <li className="nav-item mt-auto pt-4 mb-2 px-2">
+              <Link className="nav-link bg-primary-lt text-primary fw-bold rounded-3" href={`${basePath}/translations`}>
+                <span className="nav-link-icon d-md-none d-lg-inline-block text-primary">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5h7"/><path d="M9 3v2c0 4.418 -2.239 8 -5 8"/><path d="M5 9c2.106 -1.996 3.974 -4.01 4.5 -7"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/></svg>
+                </span>
+                <span className="nav-link-title">Çoklu Dil Çevirileri</span>
+              </Link>
+            </li>
 
-            <li className="nav-item mt-auto pt-4">
+            <li className="nav-item mb-2">
               <Link className="nav-link text-muted" href={`${basePath}/settings`}>
                 <span className="nav-link-icon d-md-none d-lg-inline-block">
                   <svg xmlns="http://www.w3.org/2000/svg" className="icon" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg>

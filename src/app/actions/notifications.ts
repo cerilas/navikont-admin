@@ -191,6 +191,7 @@ export async function sendNotificationToAll(appId: string, templateId: string, s
         SELECT 
           d.device_token,
           pu.full_name as patient_name,
+          pu.preferred_language,
           du.full_name as doctor_name,
           a.name as app_name
         FROM patient_devices d
@@ -211,6 +212,17 @@ export async function sendNotificationToAll(appId: string, templateId: string, s
           `Env check: KEY=${!!process.env.APN_KEY}, KEY_ID=${!!process.env.APN_KEY_ID}, TEAM_ID=${!!process.env.APN_TEAM_ID}, USE_SANDBOX=${process.env.APN_USE_SANDBOX}, BUNDLE=${bundleId}`
         ]);
 
+        // Fetch all translations for this template
+        const transRes = await db.query(
+          `SELECT language, field_name, translated_text FROM content_translations WHERE entity_type = 'content_notification_templates' AND entity_id = $1`,
+          [templateId]
+        );
+        const translationsByLang: Record<string, Record<string, string>> = {};
+        for (const r of transRes.rows) {
+          if (!translationsByLang[r.language]) translationsByLang[r.language] = {};
+          translationsByLang[r.language][r.field_name] = r.translated_text;
+        }
+
         // Group tokens by customized payload content
         const payloadGroups = new Map<string, { title: string, body: string, tokens: string[] }>();
 
@@ -219,13 +231,22 @@ export async function sendNotificationToAll(appId: string, templateId: string, s
           const pName = row.patient_name || 'Hasta';
           const dName = row.doctor_name || 'Doktorunuz';
           const aName = row.app_name || 'Uygulama';
+          const lang = row.preferred_language || 'tr';
 
-          const personalizedTitle = baseTitle
+          let titleTpl = baseTitle;
+          let bodyTpl = baseBody;
+
+          if (lang !== 'tr' && translationsByLang[lang]) {
+            titleTpl = translationsByLang[lang]['title_template'] || baseTitle;
+            bodyTpl = translationsByLang[lang]['body_template'] || baseBody;
+          }
+
+          const personalizedTitle = titleTpl
             .replace(/\{\{patient_name\}\}/g, pName)
             .replace(/\{\{doctor_name\}\}/g, dName)
             .replace(/\{\{app_name\}\}/g, aName);
 
-          const personalizedBody = baseBody
+          const personalizedBody = bodyTpl
             .replace(/\{\{patient_name\}\}/g, pName)
             .replace(/\{\{doctor_name\}\}/g, dName)
             .replace(/\{\{app_name\}\}/g, aName);
