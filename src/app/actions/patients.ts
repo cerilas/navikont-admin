@@ -298,6 +298,18 @@ export async function resetPatientProgress(enrollmentId: string) {
     // Delete questionnaire responses
     await db.query('DELETE FROM patient_questionnaire_responses WHERE enrollment_id = $1', [enrollmentId]);
 
+    // Delete checkin submissions
+    await db.query('DELETE FROM patient_checkin_submissions WHERE enrollment_id = $1', [enrollmentId]);
+
+    // Delete measurements
+    await db.query('DELETE FROM patient_measurements WHERE enrollment_id = $1', [enrollmentId]);
+
+    // Delete risk alerts
+    await db.query('DELETE FROM patient_risk_alerts WHERE enrollment_id = $1', [enrollmentId]);
+
+    // Delete badges
+    await db.query('DELETE FROM patient_badges WHERE enrollment_id = $1', [enrollmentId]);
+
     // Reset current day and dates
     await db.query(`
       UPDATE patient_app_enrollments 
