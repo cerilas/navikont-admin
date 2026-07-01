@@ -263,9 +263,39 @@ export async function updatePatientProfile(prevState: any, formData: FormData) {
 
 export async function deletePatientEnrollment(enrollmentId: string, appId: string) {
   try {
-    await db.query('DELETE FROM patient_app_enrollments WHERE id = $1 AND app_id = $2', [enrollmentId, appId]);
+    const enrollmentRes = await db.query('SELECT patient_user_id FROM patient_app_enrollments WHERE id = $1 AND app_id = $2', [enrollmentId, appId]);
+    if (enrollmentRes.rows.length === 0) return { error: 'Hasta kaydı bulunamadı.' };
+    const userId = enrollmentRes.rows[0].patient_user_id;
+
+    // 1. Wipe all enrollment-specific progress to satisfy RESTRICT foreign keys
+    const resetRes = await resetPatientProgress(enrollmentId);
+    if (resetRes.error) {
+      throw new Error("Failed to clear patient progress dependencies");
+    }
+
+    await db.query('BEGIN');
+    
+    // 2. Delete the enrollment itself
+    await db.query('DELETE FROM patient_app_enrollments WHERE id = $1', [enrollmentId]);
+    
+    // 3. Check if user has other enrollments in any app
+    const otherRes = await db.query('SELECT id FROM patient_app_enrollments WHERE patient_user_id = $1', [userId]);
+    if (otherRes.rows.length === 0) {
+      // 4. If no other enrollments exist, completely wipe the patient globally
+      await db.query('DELETE FROM patient_profiles WHERE user_id = $1', [userId]);
+      await db.query('DELETE FROM patient_diseases WHERE patient_user_id = $1', [userId]);
+      
+      // Attempt to clean up consents and devices (ignore if tables don't exist yet)
+      try { await db.query('DELETE FROM patient_consents WHERE patient_user_id = $1', [userId]); } catch (e) {}
+      try { await db.query('DELETE FROM patient_devices WHERE patient_user_id = $1', [userId]); } catch (e) {}
+      
+      await db.query('DELETE FROM core_users WHERE id = $1', [userId]);
+    }
+    
+    await db.query('COMMIT');
     return { success: true };
   } catch (error) {
+    try { await db.query('ROLLBACK'); } catch (e) {}
     console.error('Error deleting patient enrollment:', error);
     return { error: 'Hasta silinirken bir hata oluştu.' };
   }
@@ -309,6 +339,12 @@ export async function resetPatientProgress(enrollmentId: string) {
 
     // Delete badges
     await db.query('DELETE FROM patient_badges WHERE enrollment_id = $1', [enrollmentId]);
+
+    // Delete notifications
+    await db.query('DELETE FROM patient_notifications WHERE enrollment_id = $1', [enrollmentId]);
+
+    // Delete doctor notes
+    await db.query('DELETE FROM patient_doctor_notes WHERE enrollment_id = $1', [enrollmentId]);
 
     // Reset current day and dates
     await db.query(`
