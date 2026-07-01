@@ -284,8 +284,11 @@ export async function deletePatientEnrollment(enrollmentId: string, appId: strin
       // 4. If no other enrollments exist, completely wipe the patient globally
       await db.query('DELETE FROM patient_profiles WHERE user_id = $1', [userId]);
       await db.query('DELETE FROM patient_diseases WHERE patient_user_id = $1', [userId]);
+      await db.query('DELETE FROM patient_notifications WHERE user_id = $1', [userId]);
+      await db.query('DELETE FROM patient_doctor_notes WHERE patient_user_id = $1', [userId]);
       
-      // Attempt to clean up consents and devices (ignore if tables don't exist yet)
+      // Attempt to clean up consents, devices, and doctor assignments
+      try { await db.query('DELETE FROM patient_doctor_patients WHERE patient_user_id = $1', [userId]); } catch (e) {}
       try { await db.query('DELETE FROM patient_consents WHERE patient_user_id = $1', [userId]); } catch (e) {}
       try { await db.query('DELETE FROM patient_devices WHERE patient_user_id = $1', [userId]); } catch (e) {}
       
