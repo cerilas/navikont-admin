@@ -263,9 +263,10 @@ export async function updatePatientProfile(prevState: any, formData: FormData) {
 
 export async function deletePatientEnrollment(enrollmentId: string, appId: string) {
   try {
-    const enrollmentRes = await db.query('SELECT patient_user_id FROM patient_app_enrollments WHERE id = $1 AND app_id = $2', [enrollmentId, appId]);
+    const enrollmentRes = await db.query('SELECT e.patient_user_id, u.user_type FROM patient_app_enrollments e JOIN core_users u ON u.id = e.patient_user_id WHERE e.id = $1 AND e.app_id = $2', [enrollmentId, appId]);
     if (enrollmentRes.rows.length === 0) return { error: 'Hasta kaydı bulunamadı.' };
     const userId = enrollmentRes.rows[0].patient_user_id;
+    const userType = enrollmentRes.rows[0].user_type;
 
     // 1. Wipe all enrollment-specific progress to satisfy RESTRICT foreign keys
     const resetRes = await resetPatientProgress(enrollmentId);
@@ -280,8 +281,8 @@ export async function deletePatientEnrollment(enrollmentId: string, appId: strin
     
     // 3. Check if user has other enrollments in any app
     const otherRes = await db.query('SELECT id FROM patient_app_enrollments WHERE patient_user_id = $1', [userId]);
-    if (otherRes.rows.length === 0) {
-      // 4. If no other enrollments exist, completely wipe the patient globally
+    if (otherRes.rows.length === 0 && userType === 'patient') {
+      // 4. If no other enrollments exist and user is purely a patient, completely wipe them globally
       await db.query('DELETE FROM patient_profiles WHERE user_id = $1', [userId]);
       await db.query('DELETE FROM patient_diseases WHERE patient_user_id = $1', [userId]);
       await db.query('DELETE FROM patient_notifications WHERE user_id = $1', [userId]);
